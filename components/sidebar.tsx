@@ -3,13 +3,13 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, TrendingUp, TrendingDown, Tags, CreditCard, Users, FileText, PieChart, Calendar } from "lucide-react"
+import { Home, TrendingUp, TrendingDown, List , CreditCard, Users, FileText, PieChart, Calendar } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Tipos de Ingresos", href: "/tipos-ingresos", icon: TrendingUp },
   { name: "Tipos de Egresos", href: "/tipos-egresos", icon: TrendingDown },
-  { name: "Clasificaciones", href: "/clasificaciones", icon: Tags },
+  { name: "Renglones", href: "/renglones", icon: List  },
   { name: "Tipos de Pago", href: "/tipos-pago", icon: CreditCard },
   { name: "Ingresos", href: "/ingresos", icon: TrendingUp },
   { name: "Egresos", href: "/egresos", icon: TrendingDown },

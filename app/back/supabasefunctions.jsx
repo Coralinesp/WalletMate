@@ -1,4 +1,4 @@
-import { supabase } from '../back/supabase'
+import supabase from '../back/supabase'
 
 //Funciones para tabla Gestion de ingresos
 export async function getGestionDeIngresos() {

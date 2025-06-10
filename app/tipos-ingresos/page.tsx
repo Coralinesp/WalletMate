@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -20,56 +18,94 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Edit, Trash2 } from "lucide-react"
 
+// Importa tus funciones de supabase
+import {
+  getTiposDeIngresos,
+  createTipoDeIngreso,
+  updateTipoDeIngreso,
+  deleteTipoDeIngreso,
+} from "../back/supabasefunctions" // Ajusta la ruta según donde tengas tus funciones
+
 interface TipoIngreso {
   id: number
-  nombre: string
-  descripcion: string
-  activo: boolean
+  Descripcion: string | null
+  Estado: boolean | null
 }
 
 export default function TiposIngresos() {
-  const [tiposIngresos, setTiposIngresos] = useState<TipoIngreso[]>([
-    { id: 1, nombre: "Salario Base", descripcion: "Salario mensual fijo", activo: true },
-    { id: 2, nombre: "Horas Extras", descripcion: "Pago por horas adicionales trabajadas", activo: true },
-    { id: 3, nombre: "Comisiones", descripcion: "Comisiones por ventas o servicios", activo: true },
-    { id: 4, nombre: "Bonificaciones", descripcion: "Bonos y incentivos", activo: true },
-    { id: 5, nombre: "Freelance", descripcion: "Ingresos por trabajos independientes", activo: true },
-  ])
-
+  const [tiposIngresos, setTiposIngresos] = useState<TipoIngreso[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTipo, setEditingTipo] = useState<TipoIngreso | null>(null)
-  const [formData, setFormData] = useState({ nombre: "", descripcion: "" })
+  const [formData, setFormData] = useState({ descripcion: "", estado: true })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (editingTipo) {
-      setTiposIngresos((prev) =>
-        prev.map((tipo) =>
-          tipo.id === editingTipo.id ? { ...tipo, nombre: formData.nombre, descripcion: formData.descripcion } : tipo,
-        ),
-      )
-    } else {
-      const newTipo: TipoIngreso = {
-        id: Math.max(...tiposIngresos.map((t) => t.id)) + 1,
-        nombre: formData.nombre,
-        descripcion: formData.descripcion,
-        activo: true,
+  // Cargar datos al inicio
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true)
+      try {
+        const data = await getTiposDeIngresos()
+        setTiposIngresos(data)
+      } catch (e: any) {
+        setError("Error al cargar tipos de ingresos.")
+        console.error(e)
+      } finally {
+        setLoading(false)
       }
-      setTiposIngresos((prev) => [...prev, newTipo])
     }
-    setIsDialogOpen(false)
-    setEditingTipo(null)
-    setFormData({ nombre: "", descripcion: "" })
+    fetchData()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    try {
+      if (editingTipo) {
+        const updated = await updateTipoDeIngreso(editingTipo.id, {
+          descripcion: formData.descripcion,
+          estado: formData.estado,
+        })
+        setTiposIngresos((prev) =>
+          prev.map((tipo) => (tipo.id === updated.id ? updated : tipo)),
+        )
+      } else {
+        const created = await createTipoDeIngreso({
+          descripcion: formData.descripcion,
+          estado: formData.estado,
+        })
+        setTiposIngresos((prev) => [...prev, created])
+      }
+      setIsDialogOpen(false)
+      setEditingTipo(null)
+      setFormData({ descripcion: "", estado: true })
+    } catch (e: any) {
+      setError("Error al guardar el tipo de ingreso.")
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleEdit = (tipo: TipoIngreso) => {
     setEditingTipo(tipo)
-    setFormData({ nombre: tipo.nombre, descripcion: tipo.descripcion })
+    setFormData({ descripcion: tipo.Descripcion ?? "", estado: tipo.Estado ?? true })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    setTiposIngresos((prev) => prev.filter((tipo) => tipo.id !== id))
+  const handleDelete = async (id: number) => {
+    setLoading(true)
+    setError(null)
+    try {
+      await deleteTipoDeIngreso(id)
+      setTiposIngresos((prev) => prev.filter((tipo) => tipo.id !== id))
+    } catch (e: any) {
+      setError("Error al eliminar el tipo de ingreso.")
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -78,13 +114,14 @@ export default function TiposIngresos() {
         <div>
           <h1 className="text-3xl font-bold">Tipos de Ingresos</h1>
           <p className="text-muted-foreground">Gestiona los diferentes tipos de ingresos del sistema</p>
+          {error && <p className="text-red-600 mt-2">{error}</p>}
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
               onClick={() => {
                 setEditingTipo(null)
-                setFormData({ nombre: "", descripcion: "" })
+                setFormData({ descripcion: "", estado: true })
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -101,16 +138,6 @@ export default function TiposIngresos() {
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="nombre">Nombre</Label>
-                  <Input
-                    id="nombre"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, nombre: e.target.value }))}
-                    placeholder="Ej: Salario Base"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
                   <Label htmlFor="descripcion">Descripción</Label>
                   <Textarea
                     id="descripcion"
@@ -119,9 +146,23 @@ export default function TiposIngresos() {
                     placeholder="Describe el tipo de ingreso..."
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="estado">Estado</Label>
+                  <select
+                    id="estado"
+                    value={formData.estado ? "true" : "false"}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, estado: e.target.value === "true" }))}
+                    className="border rounded px-2 py-1"
+                  >
+                    <option value="true">Activo</option>
+                    <option value="false">Inactivo</option>
+                  </select>
+                </div>
               </div>
               <DialogFooter>
-                <Button type="submit">{editingTipo ? "Actualizar" : "Crear"}</Button>
+                <Button type="submit" disabled={loading}>
+                  {editingTipo ? "Actualizar" : "Crear"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -134,45 +175,47 @@ export default function TiposIngresos() {
           <CardDescription>{tiposIngresos.length} tipos de ingresos registrados</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Descripción</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tiposIngresos.map((tipo) => (
-                <TableRow key={tipo.id}>
-                  <TableCell className="font-medium">{tipo.id}</TableCell>
-                  <TableCell>{tipo.nombre}</TableCell>
-                  <TableCell>{tipo.descripcion}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        tipo.activo ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {tipo.activo ? "Activo" : "Inactivo"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(tipo)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(tipo.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {loading ? (
+            <p>Cargando...</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {tiposIngresos.map((tipo) => (
+                  <TableRow key={tipo.id}>
+                    <TableCell className="font-medium">{tipo.id}</TableCell>
+                    <TableCell>{tipo.Descripcion}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          tipo.Estado ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {tipo.Estado ? "Activo" : "Inactivo"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(tipo)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDelete(tipo.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
