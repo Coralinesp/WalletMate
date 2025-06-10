@@ -23,9 +23,9 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <div className="bg-white w-64 shadow-lg">
-      <div className="p-6">
-        <h2 className="text-xl font-bold text-gray-800">FinanceApp</h2>
+    <div className="bg-white w-64 shadow-lg border-r border-r-gray-200">
+      <div className="py-4">
+       <h2 className="text-2xl font-extrabold text-blue-700 tracking-wide text-center">WalletMate</h2>
       </div>
       <nav className="mt-6">
         {navigation.map((item) => {
