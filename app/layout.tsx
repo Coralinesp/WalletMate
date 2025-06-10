@@ -8,7 +8,7 @@ import { Header } from "@/components/header"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Sistema de Gestión Financiera Personal",
+  title: "WalletMate",
   description: "Gestiona tus finanzas personales de manera eficiente",
     generator: 'v0.dev'
 }
