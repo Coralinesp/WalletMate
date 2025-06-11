@@ -14,9 +14,6 @@ const navigation = [
   { name: "Ingresos", href: "/ingresos", icon: TrendingUp },
   { name: "Egresos", href: "/egresos", icon: TrendingDown },
   { name: "Usuarios", href: "/usuarios", icon: Users },
-  { name: "Transacciones", href: "/transacciones", icon: FileText },
-  { name: "Reportes", href: "/reportes", icon: PieChart },
-  { name: "Corte Mensual", href: "/corte-mensual", icon: Calendar },
 ]
 
 export function Sidebar() {
