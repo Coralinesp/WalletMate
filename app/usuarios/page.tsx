@@ -144,7 +144,11 @@ export default function Usuarios() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Fecha de Corte</Label>
-                  <Input value={formData.FechaDeCorte} onChange={(e) => setFormData({ ...formData, FechaDeCorte: e.target.value })} />
+                  <Input
+                    type="date"
+                    value={formData.FechaDeCorte}
+                    onChange={(e) => setFormData({ ...formData, FechaDeCorte: e.target.value })}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label>Estado</Label>
