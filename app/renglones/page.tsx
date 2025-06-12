@@ -22,11 +22,11 @@ import {
   createRenglonDeEgreso,
   updateRenglonDeEgreso,
   deleteRenglonDeEgreso
-} from "../back/supabasefunctions" // Ajusta esta ruta según tu estructura
+} from "../back/supabasefunctions"
 
 interface RenglonEgreso {
   id: number
-  Desripcion: string
+  Descripcion: string
   Estado: boolean
 }
 
@@ -34,7 +34,7 @@ export default function RenglonesDeEgresos() {
   const [renglones, setRenglones] = useState<RenglonEgreso[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingRenglon, setEditingRenglon] = useState<RenglonEgreso | null>(null)
-  const [formData, setFormData] = useState({ Desripcion: "", Estado: true })
+  const [formData, setFormData] = useState({ Descripcion: "", Estado: true })
 
   useEffect(() => {
     async function fetchData() {
@@ -53,7 +53,7 @@ export default function RenglonesDeEgresos() {
     try {
       if (editingRenglon) {
         const actualizado = await updateRenglonDeEgreso(editingRenglon.id, {
-          descripcion: formData.Desripcion,
+          descripcion: formData.Descripcion,
           estado: formData.Estado,
         })
         setRenglones((prev) =>
@@ -61,22 +61,22 @@ export default function RenglonesDeEgresos() {
         )
       } else {
         const nuevo = await createRenglonDeEgreso({
-          descripcion: formData.Desripcion,
+          descripcion: formData.Descripcion,
           estado: formData.Estado,
         })
         setRenglones((prev) => [...prev, nuevo])
       }
       setIsDialogOpen(false)
       setEditingRenglon(null)
-      setFormData({ Desripcion: "", Estado: true })
-    } catch (error) {
-      console.error("Error al guardar el renglón:", error)
+      setFormData({ Descripcion: "", Estado: true })
+    } catch (error: any) {
+      console.error("Error al guardar el renglón:", error?.message || error)
     }
   }
 
   const handleEdit = (r: RenglonEgreso) => {
     setEditingRenglon(r)
-    setFormData({ Desripcion: r.Desripcion, Estado: r.Estado })
+    setFormData({ Descripcion: r.Descripcion, Estado: r.Estado })
     setIsDialogOpen(true)
   }
 
@@ -101,7 +101,7 @@ export default function RenglonesDeEgresos() {
             <Button
               onClick={() => {
                 setEditingRenglon(null)
-                setFormData({ Desripcion: "", Estado: true })
+                setFormData({ Descripcion: "", Estado: true })
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -123,9 +123,9 @@ export default function RenglonesDeEgresos() {
                   <Label htmlFor="descripcion">Descripción</Label>
                   <Textarea
                     id="descripcion"
-                    value={formData.Desripcion}
+                    value={formData.Descripcion}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, Desripcion: e.target.value }))
+                      setFormData((prev) => ({ ...prev, Descripcion: e.target.value }))
                     }
                     placeholder="Describe el renglón de egreso..."
                     required
@@ -177,7 +177,7 @@ export default function RenglonesDeEgresos() {
               {renglones.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.id}</TableCell>
-                  <TableCell>{r.Desripcion}</TableCell>
+                  <TableCell>{r.Descripcion}</TableCell>
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded-full text-xs ${

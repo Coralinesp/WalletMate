@@ -121,7 +121,7 @@ export async function createRenglonDeEgreso({ descripcion, estado }) {
   const { data, error } = await supabase
     .from('RenglonesDeEgresos')
     .insert([{
-      Desripcion: descripcion,
+      Descripcion: descripcion,
       Estado: estado
     }])
     .select()
@@ -133,7 +133,7 @@ export async function updateRenglonDeEgreso(id, { descripcion, estado }) {
   const { data, error } = await supabase
     .from('RenglonesDeEgresos')
     .update({
-      Desripcion: descripcion,
+      Descripcion: descripcion,
       Estado: estado
     })
     .eq('id', id)
