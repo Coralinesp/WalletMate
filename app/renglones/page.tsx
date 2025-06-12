@@ -16,76 +16,76 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Edit, Trash2 } from "lucide-react"
+
 import {
-  getTiposDeEgresos,
-  createTipoDeEgreso,
-  updateTipoDeEgreso,
-  deleteTipoDeEgreso,
+  getRenglonesDeEgresos,
+  createRenglonDeEgreso,
+  updateRenglonDeEgreso,
+  deleteRenglonDeEgreso
 } from "../back/supabasefunctions"
 
-interface TipoEgreso {
+interface RenglonEgreso {
   id: number
   Descripcion: string
   Estado: boolean
 }
 
-export default function TiposEgresos() {
-  const [tiposEgresos, setTiposEgresos] = useState<TipoEgreso[]>([])
+export default function RenglonesDeEgresos() {
+  const [renglones, setRenglones] = useState<RenglonEgreso[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingTipo, setEditingTipo] = useState<TipoEgreso | null>(null)
+  const [editingRenglon, setEditingRenglon] = useState<RenglonEgreso | null>(null)
   const [formData, setFormData] = useState({ Descripcion: "", Estado: true })
 
-  const loadTipos = async () => {
-    try {
-      const data = await getTiposDeEgresos()
-      setTiposEgresos(data)
-    } catch (error) {
-      console.error("Error cargando tipos de egresos:", error)
-    }
-  }
-
   useEffect(() => {
-    loadTipos()
+    async function fetchData() {
+      try {
+        const data = await getRenglonesDeEgresos()
+        setRenglones(data)
+      } catch (error) {
+        console.error("Error al obtener los renglones:", error)
+      }
+    }
+    fetchData()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      if (editingTipo) {
-        const updated = await updateTipoDeEgreso(editingTipo.id, {
+      if (editingRenglon) {
+        const actualizado = await updateRenglonDeEgreso(editingRenglon.id, {
           descripcion: formData.Descripcion,
           estado: formData.Estado,
         })
-        setTiposEgresos((prev) =>
-          prev.map((tipo) => (tipo.id === updated.id ? updated : tipo))
+        setRenglones((prev) =>
+          prev.map((r) => (r.id === actualizado.id ? actualizado : r))
         )
       } else {
-        const nuevo = await createTipoDeEgreso({
+        const nuevo = await createRenglonDeEgreso({
           descripcion: formData.Descripcion,
           estado: formData.Estado,
         })
-        setTiposEgresos((prev) => [...prev, nuevo])
+        setRenglones((prev) => [...prev, nuevo])
       }
       setIsDialogOpen(false)
-      setEditingTipo(null)
+      setEditingRenglon(null)
       setFormData({ Descripcion: "", Estado: true })
-    } catch (error) {
-      console.error("Error guardando tipo de egreso:", error)
+    } catch (error: any) {
+      console.error("Error al guardar el renglón:", error?.message || error)
     }
   }
 
-  const handleEdit = (tipo: TipoEgreso) => {
-    setEditingTipo(tipo)
-    setFormData({ Descripcion: tipo.Descripcion, Estado: tipo.Estado })
+  const handleEdit = (r: RenglonEgreso) => {
+    setEditingRenglon(r)
+    setFormData({ Descripcion: r.Descripcion, Estado: r.Estado })
     setIsDialogOpen(true)
   }
 
   const handleDelete = async (id: number) => {
     try {
-      await deleteTipoDeEgreso(id)
-      setTiposEgresos((prev) => prev.filter((tipo) => tipo.id !== id))
+      await deleteRenglonDeEgreso(id)
+      setRenglones((prev) => prev.filter((r) => r.id !== id))
     } catch (error) {
-      console.error("Error eliminando tipo de egreso:", error)
+      console.error("Error al eliminar el renglón:", error)
     }
   }
 
@@ -93,26 +93,28 @@ export default function TiposEgresos() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Tipos de Egresos</h1>
-          <p className="text-muted-foreground">Gestiona los diferentes tipos de egresos del sistema</p>
+          <h1 className="text-3xl font-bold">Renglones de Egresos</h1>
+          <p className="text-muted-foreground">Gestiona los renglones definidos para egresos</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
               onClick={() => {
-                setEditingTipo(null)
+                setEditingRenglon(null)
                 setFormData({ Descripcion: "", Estado: true })
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Nuevo Tipo
+              Nuevo Renglón
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingTipo ? "Editar Tipo de Egreso" : "Nuevo Tipo de Egreso"}</DialogTitle>
+              <DialogTitle>{editingRenglon ? "Editar Renglón" : "Nuevo Renglón"}</DialogTitle>
               <DialogDescription>
-                {editingTipo ? "Modifica la descripción del tipo de egreso" : "Crea un nuevo tipo de egreso"}
+                {editingRenglon
+                  ? "Modifica los datos del renglón"
+                  : "Crea un nuevo renglón de egreso"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
@@ -122,26 +124,34 @@ export default function TiposEgresos() {
                   <Textarea
                     id="descripcion"
                     value={formData.Descripcion}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, Descripcion: e.target.value }))}
-                    placeholder="Describe el tipo de egreso..."
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, Descripcion: e.target.value }))
+                    }
+                    placeholder="Describe el renglón de egreso..."
                     required
                   />
                 </div>
+
                 <div className="grid gap-2">
                   <Label htmlFor="estado">Estado</Label>
                   <select
                     id="estado"
-                    className="border rounded px-3 py-2 text-sm"
-                    value={formData.Estado ? "true" : "false"}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, Estado: e.target.value === "true" }))}
+                    value={formData.Estado ? "activo" : "inactivo"}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        Estado: e.target.value === "activo" ? true : false,
+                      }))
+                    }
+                    className="border rounded px-2 py-1"
                   >
-                    <option value="true">Activo</option>
-                    <option value="false">Inactivo</option>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
                   </select>
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">{editingTipo ? "Actualizar" : "Crear"}</Button>
+                <Button type="submit">{editingRenglon ? "Actualizar" : "Crear"}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -150,8 +160,8 @@ export default function TiposEgresos() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Tipos de Egresos</CardTitle>
-          <CardDescription>{tiposEgresos.length} tipos de egresos registrados</CardDescription>
+          <CardTitle>Lista de Renglones</CardTitle>
+          <CardDescription>{renglones.length} renglones registrados</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -164,25 +174,25 @@ export default function TiposEgresos() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tiposEgresos.map((tipo) => (
-                <TableRow key={tipo.id}>
-                  <TableCell className="font-medium">{tipo.id}</TableCell>
-                  <TableCell>{tipo.Descripcion}</TableCell>
+              {renglones.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.id}</TableCell>
+                  <TableCell>{r.Descripcion}</TableCell>
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded-full text-xs ${
-                        tipo.Estado ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                        r.Estado ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {tipo.Estado ? "Activo" : "Inactivo"}
+                      {r.Estado ? "Activo" : "Inactivo"}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(tipo)}>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(r)}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(tipo.id)}>
+                      <Button variant="outline" size="sm" onClick={() => handleDelete(r.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
