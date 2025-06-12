@@ -1,8 +1,7 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import supabase from "../back/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -20,58 +19,67 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Edit, Trash2 } from "lucide-react"
 
-interface TipoPago {
+interface TipoDePago {
   id: number
-  nombre: string
-  descripcion: string
-  activo: boolean
+  Descripcion: string | null
+  Estado: boolean | null
 }
 
 export default function TiposPago() {
-  const [tiposPago, setTiposPago] = useState<TipoPago[]>([
-    { id: 1, nombre: "Efectivo", descripcion: "Pago en dinero en efectivo", activo: true },
-    { id: 2, nombre: "Tarjeta de Débito", descripcion: "Pago con tarjeta de débito", activo: true },
-    { id: 3, nombre: "Tarjeta de Crédito", descripcion: "Pago con tarjeta de crédito", activo: true },
-    { id: 4, nombre: "Cheque", descripcion: "Pago mediante cheque", activo: true },
-    { id: 5, nombre: "Transferencia", descripcion: "Transferencia bancaria", activo: true },
-    { id: 6, nombre: "PayPal", descripcion: "Pago a través de PayPal", activo: true },
-    { id: 7, nombre: "Criptomonedas", descripcion: "Pago con criptomonedas", activo: true },
-  ])
-
+  const [tiposPago, setTiposPago] = useState<TipoDePago[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingTipo, setEditingTipo] = useState<TipoPago | null>(null)
-  const [formData, setFormData] = useState({ nombre: "", descripcion: "" })
+  const [editingTipo, setEditingTipo] = useState<TipoDePago | null>(null)
+  const [formData, setFormData] = useState({ Descripcion: "", Estado: true })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (editingTipo) {
-      setTiposPago((prev) =>
-        prev.map((tipo) =>
-          tipo.id === editingTipo.id ? { ...tipo, nombre: formData.nombre, descripcion: formData.descripcion } : tipo,
-        ),
-      )
-    } else {
-      const newTipo: TipoPago = {
-        id: Math.max(...tiposPago.map((t) => t.id)) + 1,
-        nombre: formData.nombre,
-        descripcion: formData.descripcion,
-        activo: true,
-      }
-      setTiposPago((prev) => [...prev, newTipo])
-    }
-    setIsDialogOpen(false)
-    setEditingTipo(null)
-    setFormData({ nombre: "", descripcion: "" })
+  const fetchTiposPago = async () => {
+    const { data, error } = await supabase.from("TiposDePago").select("*").order("id", { ascending: true })
+    if (!error && data) setTiposPago(data as TipoDePago[])
   }
 
-  const handleEdit = (tipo: TipoPago) => {
+  useEffect(() => {
+    fetchTiposPago()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (editingTipo) {
+      const { error } = await supabase
+        .from("TiposDePago")
+        .update({
+          Descripcion: formData.Descripcion,
+          Estado: formData.Estado,
+        })
+        .eq("id", editingTipo.id)
+
+      if (!error) fetchTiposPago()
+    } else {
+      const { error } = await supabase.from("TiposDePago").insert([
+        {
+          Descripcion: formData.Descripcion,
+          Estado: formData.Estado,
+        },
+      ])
+      if (!error) fetchTiposPago()
+    }
+
+    setIsDialogOpen(false)
+    setEditingTipo(null)
+    setFormData({ Descripcion: "", Estado: true })
+  }
+
+  const handleEdit = (tipo: TipoDePago) => {
     setEditingTipo(tipo)
-    setFormData({ nombre: tipo.nombre, descripcion: tipo.descripcion })
+    setFormData({
+      Descripcion: tipo.Descripcion || "",
+      Estado: tipo.Estado ?? true,
+    })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    setTiposPago((prev) => prev.filter((tipo) => tipo.id !== id))
+  const handleDelete = async (id: number) => {
+    const { error } = await supabase.from("TiposDePago").delete().eq("id", id)
+    if (!error) fetchTiposPago()
   }
 
   return (
@@ -86,7 +94,7 @@ export default function TiposPago() {
             <Button
               onClick={() => {
                 setEditingTipo(null)
-                setFormData({ nombre: "", descripcion: "" })
+                setFormData({ Descripcion: "", Estado: true })
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -103,23 +111,27 @@ export default function TiposPago() {
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="nombre">Nombre</Label>
-                  <Input
-                    id="nombre"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, nombre: e.target.value }))}
-                    placeholder="Ej: Efectivo"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
                   <Label htmlFor="descripcion">Descripción</Label>
                   <Textarea
                     id="descripcion"
-                    value={formData.descripcion}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, descripcion: e.target.value }))}
+                    value={formData.Descripcion}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, Descripcion: e.target.value }))}
                     placeholder="Describe el tipo de pago..."
                   />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="estado">Estado</Label>
+                  <select
+                    id="estado"
+                    value={formData.Estado ? "true" : "false"}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, Estado: e.target.value === "true" }))
+                    }
+                    className="border rounded px-2 py-1"
+                  >
+                    <option value="true">Activo</option>
+                    <option value="false">Inactivo</option>
+                  </select>
                 </div>
               </div>
               <DialogFooter>
@@ -140,7 +152,6 @@ export default function TiposPago() {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
-                <TableHead>Nombre</TableHead>
                 <TableHead>Descripción</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -150,15 +161,14 @@ export default function TiposPago() {
               {tiposPago.map((tipo) => (
                 <TableRow key={tipo.id}>
                   <TableCell className="font-medium">{tipo.id}</TableCell>
-                  <TableCell>{tipo.nombre}</TableCell>
-                  <TableCell>{tipo.descripcion}</TableCell>
+                  <TableCell>{tipo.Descripcion}</TableCell>
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded-full text-xs ${
-                        tipo.activo ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                        tipo.Estado ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {tipo.activo ? "Activo" : "Inactivo"}
+                      {tipo.Estado ? "Activo" : "Inactivo"}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">

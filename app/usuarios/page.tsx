@@ -1,8 +1,8 @@
 "use client"
 
-import type React from "react"
+import { useEffect, useState } from "react"
+import supabase from "../back/supabase"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,100 +23,77 @@ import { Plus, Edit, Trash2, User } from "lucide-react"
 
 interface Usuario {
   id: number
-  nombre: string
-  email: string
-  rol: "Admin" | "Usuario"
-  estado: "Activo" | "Inactivo"
-  fechaCreacion: string
-  ultimoAcceso: string
+  Nombre: string
+  Cedula: number | null
+  LimiteDeEgresos: number | null
+  FechaDeCorte: string | null
+  Estado: boolean | null
 }
 
 export default function Usuarios() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([
-    {
-      id: 1,
-      nombre: "Juan Pérez",
-      email: "juan.perez@email.com",
-      rol: "Admin",
-      estado: "Activo",
-      fechaCreacion: "2024-01-01",
-      ultimoAcceso: "2024-01-15",
-    },
-    {
-      id: 2,
-      nombre: "María García",
-      email: "maria.garcia@email.com",
-      rol: "Usuario",
-      estado: "Activo",
-      fechaCreacion: "2024-01-05",
-      ultimoAcceso: "2024-01-14",
-    },
-    {
-      id: 3,
-      nombre: "Carlos López",
-      email: "carlos.lopez@email.com",
-      rol: "Usuario",
-      estado: "Inactivo",
-      fechaCreacion: "2024-01-10",
-      ultimoAcceso: "2024-01-12",
-    },
-  ])
-
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
   const [formData, setFormData] = useState({
-    nombre: "",
-    email: "",
-    rol: "Usuario" as "Admin" | "Usuario",
-    estado: "Activo" as "Activo" | "Inactivo",
+    Nombre: "",
+    Cedula: "",
+    LimiteDeEgresos: "",
+    FechaDeCorte: "",
+    Estado: "true",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchUsuarios = async () => {
+    const { data, error } = await supabase.from("Usuarios").select("*")
+    if (!error && data) setUsuarios(data)
+  }
+
+  useEffect(() => {
+    fetchUsuarios()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (editingUsuario) {
-      setUsuarios((prev) =>
-        prev.map((usuario) =>
-          usuario.id === editingUsuario.id
-            ? {
-                ...usuario,
-                nombre: formData.nombre,
-                email: formData.email,
-                rol: formData.rol,
-                estado: formData.estado,
-              }
-            : usuario,
-        ),
-      )
-    } else {
-      const nuevoUsuario: Usuario = {
-        id: Math.max(...usuarios.map((u) => u.id)) + 1,
-        nombre: formData.nombre,
-        email: formData.email,
-        rol: formData.rol,
-        estado: formData.estado,
-        fechaCreacion: new Date().toISOString().split("T")[0],
-        ultimoAcceso: "Nunca",
-      }
-      setUsuarios((prev) => [...prev, nuevoUsuario])
+    const usuarioData = {
+      Nombre: formData.Nombre,
+      Cedula: formData.Cedula ? Number(formData.Cedula) : null,
+      LimiteDeEgresos: formData.LimiteDeEgresos ? Number(formData.LimiteDeEgresos) : null,
+      FechaDeCorte: formData.FechaDeCorte,
+      Estado: formData.Estado === "true",
     }
+
+    if (editingUsuario) {
+      await supabase.from("Usuarios").update(usuarioData).eq("id", editingUsuario.id)
+    } else {
+      await supabase.from("Usuarios").insert(usuarioData)
+    }
+
+    setFormData({
+      Nombre: "",
+      Cedula: "",
+      LimiteDeEgresos: "",
+      FechaDeCorte: "",
+      Estado: "true",
+    })
     setIsDialogOpen(false)
     setEditingUsuario(null)
-    setFormData({ nombre: "", email: "", rol: "Usuario", estado: "Activo" })
+    fetchUsuarios()
   }
 
   const handleEdit = (usuario: Usuario) => {
     setEditingUsuario(usuario)
     setFormData({
-      nombre: usuario.nombre,
-      email: usuario.email,
-      rol: usuario.rol,
-      estado: usuario.estado,
+      Nombre: usuario.Nombre || "",
+      Cedula: usuario.Cedula?.toString() || "",
+      LimiteDeEgresos: usuario.LimiteDeEgresos?.toString() || "",
+      FechaDeCorte: usuario.FechaDeCorte || "",
+      Estado: usuario.Estado?.toString() || "true",
     })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    setUsuarios((prev) => prev.filter((usuario) => usuario.id !== id))
+  const handleDelete = async (id: number) => {
+    await supabase.from("Usuarios").delete().eq("id", id)
+    fetchUsuarios()
   }
 
   return (
@@ -131,7 +108,13 @@ export default function Usuarios() {
             <Button
               onClick={() => {
                 setEditingUsuario(null)
-                setFormData({ nombre: "", email: "", rol: "Usuario", estado: "Activo" })
+                setFormData({
+                  Nombre: "",
+                  Cedula: "",
+                  LimiteDeEgresos: "",
+                  FechaDeCorte: "",
+                  Estado: "true",
+                })
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -148,55 +131,34 @@ export default function Usuarios() {
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="nombre">Nombre Completo</Label>
-                  <Input
-                    id="nombre"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, nombre: e.target.value }))}
-                    placeholder="Ej: Juan Pérez"
-                    required
-                  />
+                  <Label>Nombre</Label>
+                  <Input value={formData.Nombre} onChange={(e) => setFormData({ ...formData, Nombre: e.target.value })} required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                    placeholder="usuario@email.com"
-                    required
-                  />
+                  <Label>Cédula</Label>
+                  <Input type="number" value={formData.Cedula} onChange={(e) => setFormData({ ...formData, Cedula: e.target.value })} />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Rol</Label>
-                  <Select
-                    value={formData.rol}
-                    onValueChange={(value: "Admin" | "Usuario") => setFormData((prev) => ({ ...prev, rol: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Usuario">Usuario</SelectItem>
-                      <SelectItem value="Admin">Administrador</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Límite de Egresos</Label>
+                  <Input type="number" value={formData.LimiteDeEgresos} onChange={(e) => setFormData({ ...formData, LimiteDeEgresos: e.target.value })} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Fecha de Corte</Label>
+                  <Input
+                    type="date"
+                    value={formData.FechaDeCorte}
+                    onChange={(e) => setFormData({ ...formData, FechaDeCorte: e.target.value })}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label>Estado</Label>
-                  <Select
-                    value={formData.estado}
-                    onValueChange={(value: "Activo" | "Inactivo") =>
-                      setFormData((prev) => ({ ...prev, estado: value }))
-                    }
-                  >
+                  <Select value={formData.Estado} onValueChange={(value) => setFormData({ ...formData, Estado: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Activo">Activo</SelectItem>
-                      <SelectItem value="Inactivo">Inactivo</SelectItem>
+                      <SelectItem value="true">Activo</SelectItem>
+                      <SelectItem value="false">Inactivo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -209,10 +171,9 @@ export default function Usuarios() {
         </Dialog>
       </div>
 
-      {/* Estadísticas de Usuarios */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
             <User className="h-4 w-4 text-blue-600" />
           </CardHeader>
@@ -221,28 +182,18 @@ export default function Usuarios() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
             <User className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {usuarios.filter((u) => u.estado === "Activo").length}
+              {usuarios.filter((u) => u.Estado === true).length}
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Administradores</CardTitle>
-            <User className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{usuarios.filter((u) => u.rol === "Admin").length}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Lista de Usuarios */}
       <Card>
         <CardHeader>
           <CardTitle>Lista de Usuarios</CardTitle>
@@ -254,34 +205,26 @@ export default function Usuarios() {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Nombre</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Rol</TableHead>
+                <TableHead>Cédula</TableHead>
+                <TableHead>Límite</TableHead>
+                <TableHead>Fecha Corte</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Fecha Creación</TableHead>
-                <TableHead>Último Acceso</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {usuarios.map((usuario) => (
                 <TableRow key={usuario.id}>
-                  <TableCell className="font-medium">{usuario.id}</TableCell>
-                  <TableCell>{usuario.nombre}</TableCell>
-                  <TableCell>{usuario.email}</TableCell>
+                  <TableCell>{usuario.id}</TableCell>
+                  <TableCell>{usuario.Nombre}</TableCell>
+                  <TableCell>{usuario.Cedula}</TableCell>
+                  <TableCell>{usuario.LimiteDeEgresos}</TableCell>
+                  <TableCell>{usuario.FechaDeCorte}</TableCell>
                   <TableCell>
-                    <Badge variant={usuario.rol === "Admin" ? "default" : "secondary"}>{usuario.rol}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className={
-                        usuario.estado === "Activo" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                      }
-                    >
-                      {usuario.estado}
+                    <Badge className={usuario.Estado ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                      {usuario.Estado ? "Activo" : "Inactivo"}
                     </Badge>
                   </TableCell>
-                  <TableCell>{usuario.fechaCreacion}</TableCell>
-                  <TableCell>{usuario.ultimoAcceso}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" onClick={() => handleEdit(usuario)}>
