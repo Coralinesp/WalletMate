@@ -256,5 +256,3 @@ export default function Usuarios() {
         </CardContent>
       </Card>
     </div>
-  );
-}
