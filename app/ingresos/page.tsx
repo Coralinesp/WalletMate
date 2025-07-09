@@ -3,10 +3,6 @@
 import { useEffect, useState } from "react"
 import supabase from "../back/supabase"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -16,8 +12,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Trash2 } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Plus, Edit, Check, Trash2 } from "lucide-react"
 import GestionDeIngresosFiltro from "../../components/ui/Filtros/GestionDeIngresosFiltro"
 
 interface GestionIngreso {
@@ -47,6 +53,15 @@ export default function GestionDeIngresos() {
     Usuario: "",
     Estado: true,
   })
+  // Estados para errores de validación
+  const [errorTipoDeIngreso, setErrorTipoDeIngreso] = useState<string>("")
+  const [errorDescripcion, setErrorDescripcion] = useState<string>("")
+  const [errorUsuario, setErrorUsuario] = useState<string>("")
+  const isFormValid =
+    formData.TipoDeIngreso !== "" &&
+    formData.Descripcion.trim() !== "" &&
+    !errorDescripcion &&
+    formData.Usuario !== "";
 
   const fetchData = async () => {
     const { data: ingresos } = await supabase.from("GestionDeIngresos").select("*").order("id", { ascending: true })
@@ -85,8 +100,34 @@ export default function GestionDeIngresos() {
     setFiltrados(resultado)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Reseteo errores
+    setErrorTipoDeIngreso("")
+    setErrorDescripcion("")
+    setErrorUsuario("")
+
+    // Validaciones
+    let valid = true
+
+    if (!formData.TipoDeIngreso) {
+      setErrorTipoDeIngreso("Debe seleccionar un tipo de ingreso")
+      valid = false
+    }
+
+    if (!formData.Descripcion.trim()) {
+      setErrorDescripcion("La descripción no puede estar vacía")
+      valid = false
+    } 
+
+    if (!formData.Usuario) {
+      setErrorUsuario("Debe seleccionar un usuario")
+      valid = false
+    }
+
+    if (!valid) return
+
     const dataToSend = {
       TipoDeIngreso: formData.TipoDeIngreso ? parseInt(formData.TipoDeIngreso) : null,
       Descripcion: formData.Descripcion,
@@ -106,7 +147,7 @@ export default function GestionDeIngresos() {
     await fetchData()
     handleFiltrar({ texto: "", tipoDeIngreso: "", usuario: "", estado: "" })
   }
-
+  
   const handleEdit = (ingreso: GestionIngreso) => {
     setEditingIngreso(ingreso)
     setFormData({
@@ -122,7 +163,16 @@ export default function GestionDeIngresos() {
     await supabase.from("GestionDeIngresos").delete().eq("id", id)
     fetchData()
   }
-
+  // Función para validar descripción en tiempo real
+  const validarDescripcion = (descripcion: string) => {
+    if (!descripcion.trim()) {
+      setErrorDescripcion("La descripción no puede estar vacía")
+      return false
+    } else {
+      setErrorDescripcion("") // no hay error
+      return true
+    }
+  }
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -132,77 +182,146 @@ export default function GestionDeIngresos() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditingIngreso(null); setFormData({ TipoDeIngreso: "", Descripcion: "", Usuario: "", Estado: true }) }}>
+            <Button className="bg-[#385bf0] hover:bg-[#132b95]" onClick={() => { setEditingIngreso(null); setFormData({ TipoDeIngreso: "", Descripcion: "", Usuario: "", Estado: true }) }}>
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Ingreso
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingIngreso ? "Editar Ingreso" : "Nuevo Ingreso"}</DialogTitle>
-              <DialogDescription>{editingIngreso ? "Modifica el ingreso" : "Agrega un nuevo ingreso"}</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label>Tipo de Ingreso</Label>
-                  <Select
-                    value={formData.TipoDeIngreso}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, TipoDeIngreso: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un tipo de ingreso" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tiposDeIngreso.map((tipo) => (
-                        <SelectItem key={tipo.id} value={tipo.id.toString()}>
-                          {tipo.Descripcion}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Descripción</Label>
-                  <Textarea
-                    value={formData.Descripcion}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, Descripcion: e.target.value }))}
-                    placeholder="Escribe una descripción del ingreso..."
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Usuario</Label>
-                  <Select
-                    value={formData.Usuario}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, Usuario: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un usuario" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {usuarios.map((user) => (
-                        <SelectItem key={user.id} value={user.id.toString()}>
-                          {user.Nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Estado</Label>
-                  <select
-                    value={formData.Estado ? "true" : "false"}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, Estado: e.target.value === "true" }))}
-                    className="border rounded px-2 py-1"
-                  >
-                    <option value="true">Activo</option>
-                    <option value="false">Inactivo</option>
-                  </select>
-                </div>
+   <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 text-white">
+              <DialogHeader className="space-y-2">
+                <DialogTitle className="text-xl font-semibold">
+                  {editingIngreso ? "Editar Ingreso" : "Nuevo Ingreso"}
+                </DialogTitle>
+                <DialogDescription className="text-blue-100 mt-1">
+                  {editingIngreso ? "Modifica el ingreso" : "Agrega un nuevo ingreso"}
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
+              {/* Tipo de Ingreso */}
+              <div className="space-y-1">
+                <Label htmlFor="tipo-de-ingreso" className="text-sm font-medium text-gray-700">
+                  Tipo de Ingreso
+                </Label>
+                <Select
+                  value={formData.TipoDeIngreso}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, TipoDeIngreso: value }))}
+                >
+                  <SelectTrigger className="focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <SelectValue placeholder="Selecciona un tipo de ingreso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tiposDeIngreso.map((tipo) => (
+                      <SelectItem key={tipo.id} value={tipo.id.toString()}>
+                        {tipo.Descripcion}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errorTipoDeIngreso && <p className="text-red-600 text-sm mt-1">{errorTipoDeIngreso}</p>}
               </div>
-              <DialogFooter>
-                <Button type="submit">{editingIngreso ? "Actualizar" : "Crear"}</Button>
-              </DialogFooter>
+
+              {/* Descripción */}
+              <div className="space-y-1">
+                <Label htmlFor="descripcion" className="text-sm font-medium text-gray-700">
+                  Descripción
+                </Label>
+                <Textarea
+                  id="descripcion"
+                  placeholder="Escribe una descripción del ingreso..."
+                  value={formData.Descripcion}
+                  onChange={(e) => {
+                    const valor = e.target.value
+                    setFormData((prev) => ({ ...prev, Descripcion: valor }))
+                    validarDescripcion(valor)
+                  }}
+                  className="min-h-[120px] resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {errorDescripcion && <p className="text-red-600 text-sm mt-1">{errorDescripcion}</p>}
+                <p className="text-xs text-gray-400">{formData.Descripcion.length}/500</p>
+              </div>
+
+              {/* Usuario */}
+              <div className="space-y-1">
+                <Label htmlFor="usuario" className="text-sm font-medium text-gray-700">
+                  Usuario Responsable
+                </Label>
+                <Select
+                  value={formData.Usuario}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, Usuario: value }))}
+                >
+                  <SelectTrigger className="focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <SelectValue placeholder="Selecciona un usuario" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usuarios.map((user) => (
+                      <SelectItem key={user.id} value={user.id.toString()}>
+                        {user.Nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errorUsuario && <p className="text-red-600 text-sm mt-1">{errorUsuario}</p>}
+              </div>
+
+              {/* Estado */}
+              <div className="space-y-1">
+                <Label htmlFor="estado" className="text-sm font-medium text-gray-700">
+                  Estado del Registro
+                </Label>
+                <Select
+                  value={formData.Estado ? "true" : "false"}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, Estado: value === "true" }))
+                  }
+                >
+                  <SelectTrigger className="focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Activo</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="false">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        <span>Inactivo</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Botones acción */}
+              <div className="flex justify-end space-x-3 pt-6 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsDialogOpen(false)
+                    setEditingIngreso(null)
+                    setErrorTipoDeIngreso("")
+                    setErrorDescripcion("")
+                    setErrorUsuario("")
+                  }}
+                  className="px-6"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="px-6 bg-blue-600 hover:bg-blue-700"
+                  disabled={!isFormValid}
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  {editingIngreso ? "Actualizar" : "Registrar"}
+                </Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>

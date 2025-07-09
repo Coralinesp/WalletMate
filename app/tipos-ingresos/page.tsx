@@ -5,25 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Trash2 } from "lucide-react";
-
-import {
-  getTiposDeIngresos,
-  createTipoDeIngreso,
-  updateTipoDeIngreso,
-  deleteTipoDeIngreso,
-} from "../back/supabasefunctions";
-
+import { getTiposDeIngresos, createTipoDeIngreso, updateTipoDeIngreso, deleteTipoDeIngreso,} from "../back/supabasefunctions";
 import TiposDeIngresosFiltro, { FiltrosTiposIngresos } from "@/components/ui/Filtros/TiposDeIngresosFiltro";
 
 interface TipoIngreso {
@@ -41,6 +26,7 @@ export default function TiposIngresos() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
+  const [descripcionError, setDescripcionError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -141,7 +127,7 @@ export default function TiposIngresos() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button
+            <Button className="bg-[#385bf0] hover:bg-[#132b95]"
               onClick={() => {
                 setEditingTipo(null);
                 setFormData({ descripcion: "", estado: true });
@@ -151,46 +137,88 @@ export default function TiposIngresos() {
               Nuevo Tipo
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingTipo ? "Editar Tipo de Ingreso" : "Nuevo Tipo de Ingreso"}</DialogTitle>
-              <DialogDescription>
-                {editingTipo ? "Modifica los datos del tipo de ingreso" : "Crea un nuevo tipo de ingreso"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="descripcion">Descripción</Label>
-                  <Textarea
-                    id="descripcion"
-                    value={formData.descripcion}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, descripcion: e.target.value }))
-                    }
-                    placeholder="Describe el tipo de ingreso..."
-                  />
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+            {/* Header con fondo en degradado */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 text-white">
+              <DialogHeader className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Plus className="w-5 h-5" />
+                    </div>
+                    <DialogTitle className="text-xl font-semibold">
+                      {editingTipo ? "Editar Tipo de Ingreso" : "Nuevo Tipo de Ingreso"}
+                    </DialogTitle>
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="estado">Estado</Label>
-                  <select
-                    id="estado"
-                    value={formData.estado ? "true" : "false"}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, estado: e.target.value === "true" }))
-                    }
-                    className="border rounded px-2 py-1"
-                  >
-                    <option value="true">Activo</option>
-                    <option value="false">Inactivo</option>
-                  </select>
-                </div>
+                <DialogDescription className="text-blue-100">
+                  {editingTipo
+                    ? "Modifica los datos del tipo de ingreso"
+                    : "Configura un nuevo tipo de ingreso para tu sistema"}
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            {/* Formulario */}
+            <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="descripcion" className="text-sm font-medium text-gray-700">
+                  Descripción del tipo de ingreso
+                </Label>
+                <Textarea
+                  id="descripcion"
+                  placeholder="Ej: Ingreso por ventas, donaciones, etc."
+                  value={formData.descripcion}
+                 onChange={(e) => {
+                  const value = e.target.value;
+                  setFormData((prev) => ({ ...prev, descripcion: value }));
+                  // Validaciones
+                  if (!value.trim()) {
+                    setDescripcionError("La descripción no puede estar vacía.");
+                  } else if (value.trim().length < 5) {
+                    setDescripcionError("La descripción debe tener al menos 5 caracteres.");
+                  } else if (value.trim().length > 100) {
+                    setDescripcionError("La descripción no debe superar los 100 caracteres.");
+                  } else {
+                    setDescripcionError(null);
+                  }
+                }}
+                  className="min-h-[100px] resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />       
+                <p className="text-xs text-gray-500">
+                  Proporciona una descripción clara del tipo de ingreso
+                </p>
+                {descripcionError && (
+                  <p className="text-sm text-red-600">{descripcionError}</p>
+                )}
               </div>
-              <DialogFooter>
-                <Button type="submit" disabled={loading}>
-                  {editingTipo ? "Actualizar" : "Crear"}
+
+              <div className="space-y-2">
+                <Label htmlFor="estado" className="text-sm font-medium text-gray-700">
+                  Estado
+                </Label>
+                <select
+                  id="estado"
+                  value={formData.estado ? "true" : "false"}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, estado: e.target.value === "true" }))
+                  }
+                  className="border rounded px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="true">Activo</option>
+                  <option value="false">Inactivo</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="px-6">
+                  Cancelar
                 </Button>
-              </DialogFooter>
+                <Button type="submit" className="px-6 bg-blue-600 hover:bg-blue-700" disabled={loading || !!descripcionError} >
+                {editingTipo ? "Actualizar" : "Crear"}
+              </Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>

@@ -1,23 +1,22 @@
 "use client"
-
 import { useEffect, useState } from "react"
 import supabase from "../back/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit, Trash2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Plus, Edit, Trash2, CreditCard, Check } from "lucide-react"
 import TiposDePagoFiltro from "../../components/ui/Filtros/TiposDePagoFiltro"
 
 interface TipoDePago {
@@ -32,6 +31,7 @@ export default function TiposPago() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTipo, setEditingTipo] = useState<TipoDePago | null>(null)
   const [formData, setFormData] = useState({ Descripcion: "", Estado: true })
+  const [descripcionError, setDescripcionError] = useState("")
 
   const fetchTiposPago = async () => {
     const { data, error } = await supabase.from("TiposDePago").select("*").order("id", { ascending: true })
@@ -57,6 +57,16 @@ export default function TiposPago() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (/\d/.test(formData.Descripcion)) {
+      alert("La descripción no debe contener números.")
+      return
+    }
+
+    if (!formData.Descripcion.trim()) {
+      setDescripcionError("La descripción no puede estar vacía.")
+      return
+    }
+
     if (editingTipo) {
       const { error } = await supabase
         .from("TiposDePago")
@@ -76,7 +86,7 @@ export default function TiposPago() {
     setFormData({ Descripcion: "", Estado: true })
     handleFiltrar({ texto: "", estado: "" })
   }
-
+  
   const handleEdit = (tipo: TipoDePago) => {
     setEditingTipo(tipo)
     setFormData({ Descripcion: tipo.Descripcion || "", Estado: tipo.Estado ?? true })
@@ -97,7 +107,7 @@ export default function TiposPago() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button
+            <Button className="bg-[#385bf0] hover:bg-[#132b95]"
               onClick={() => {
                 setEditingTipo(null)
                 setFormData({ Descripcion: "", Estado: true })
@@ -107,42 +117,93 @@ export default function TiposPago() {
               Nuevo Tipo de Pago
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingTipo ? "Editar Tipo de Pago" : "Nuevo Tipo de Pago"}</DialogTitle>
-              <DialogDescription>
-                {editingTipo ? "Modifica los datos del tipo de pago" : "Crea un nuevo tipo de pago"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="descripcion">Descripción</Label>
-                  <Textarea
-                    id="descripcion"
-                    value={formData.Descripcion}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, Descripcion: e.target.value }))}
-                    placeholder="Describe el tipo de pago..."
-                  />
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 text-white">
+              <DialogHeader className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <DialogTitle className="text-xl font-semibold">
+                      {editingTipo ? "Editar Tipo de Pago" : "Nuevo Tipo de Pago"}
+                    </DialogTitle>
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="estado">Estado</Label>
-                  <select
-                    id="estado"
-                    value={formData.Estado ? "true" : "false"}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, Estado: e.target.value === "true" }))
+                <DialogDescription className="text-blue-100">
+                  {editingTipo ? "Modifica los datos del tipo de pago" : "Configura un nuevo método de pago para tu sistema"}
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="descripcion" className="text-sm font-medium text-gray-700">
+                  Descripción del tipo de pago
+                </Label>
+                <Textarea
+                  id="descripcion"
+                  placeholder="Ej: Tarjeta de crédito, transferencia bancaria, efectivo..."
+                  value={formData.Descripcion}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setFormData((prev) => ({ ...prev, Descripcion: value }))
+                    if (/\d/.test(value)) {
+                      setDescripcionError("La descripción no debe contener números.")
+                    } else {
+                      setDescripcionError("")
                     }
-                    className="border rounded px-2 py-1"
-                  >
-                    <option value="true">Activo</option>
-                    <option value="false">Inactivo</option>
-                  </select>
-                </div>
+                  }}
+                  className="min-h-[100px] resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+                {descripcionError && (
+                  <p className="text-sm text-red-600">{descripcionError}</p>
+                )}
+                <p className="text-xs text-gray-500">Proporciona una descripción clara del método de pago</p>
               </div>
-              <DialogFooter>
-                <Button type="submit">{editingTipo ? "Actualizar" : "Crear"}</Button>
-              </DialogFooter>
+
+              <div className="space-y-2">
+                <Label htmlFor="estado" className="text-sm font-medium text-gray-700">
+                  Estado
+                </Label>
+                <Select
+                  value={formData.Estado ? "true" : "false"}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, Estado: value === "true" }))}
+                >
+                  <SelectTrigger className="focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Activo</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="false">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <span>Inactivo</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Botones */}
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="px-6">
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="px-6 bg-blue-600 hover:bg-blue-700"
+                  disabled={!formData.Descripcion.trim() || !!descripcionError}
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  {editingTipo ? "Actualizar" : "Crear Tipo de Pago"}
+                </Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
