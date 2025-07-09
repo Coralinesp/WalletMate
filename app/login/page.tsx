@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import supabase from "./back/supabase"
+import supabase from "../back/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,13 +20,13 @@ export default function LoginPage() {
   // Datos solo para registro
   const [cedula, setCedula] = useState("")
   const [limiteDeEgresos, setLimiteDeEgresos] = useState("")
-  const [fechaDeCorte, setFechaDeCorte] = useState("")
 
+  // 🔐 Redirige si ya estás autenticado
   useEffect(() => {
     if (localStorage.getItem("isLoggedIn") === "true") {
       router.push("/tipos-ingresos")
     }
-  }, [])
+  }, [router])
 
   const handleLogin = async () => {
     setError("")
@@ -44,6 +44,10 @@ export default function LoginPage() {
     if (data && data.length === 1) {
       localStorage.setItem("isLoggedIn", "true")
       localStorage.setItem("usuario", nombre)
+
+      // 🔥 Notifica al sidebar que hubo login
+      window.dispatchEvent(new Event("loginStatusChanged"))
+
       router.push("/tipos-ingresos")
     } else {
       setError("Nombre o contraseña incorrectos.")
@@ -76,14 +80,10 @@ export default function LoginPage() {
     if (insertError) {
       setError("Error al registrar el usuario.")
     } else {
-      setIsRegistering(false)
-      setNombre("")
-      setPassword("")
-      setCedula("")
-      setLimiteDeEgresos("")
-      setFechaDeCorte("")
-      setError("")
-      alert("Usuario registrado correctamente. Ahora puedes iniciar sesión.")
+      localStorage.setItem("isLoggedIn", "true")
+      localStorage.setItem("usuario", nombre)
+      window.dispatchEvent(new Event("loginStatusChanged"))
+      router.push("/tipos-ingresos")
     }
   }
 
