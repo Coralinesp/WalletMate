@@ -255,4 +255,4 @@ export default function Usuarios() {
           </Table>
         </CardContent>
       </Card>
-    </div>
+    </div>)}
