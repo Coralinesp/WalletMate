@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, User } from "lucide-react";
+import { Plus, Edit, Trash2, User, CreditCard, DollarSign } from "lucide-react";
 
 import UsuariosFiltro, { FiltrosUsuarios } from "@/components/ui/Filtros/UsuariosFiltro";
 
@@ -32,6 +32,12 @@ interface Usuario {
   Estado: boolean | null;
   admin?: number | null; // <-- Añade el campo admin
 }
+interface FormErrors {
+  Nombre?: string;
+  Cedula?: string;
+  LimiteDeEgresos?: string;
+  FechaDeCorte?: string;
+}
 
 export default function Usuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -39,6 +45,9 @@ export default function Usuarios() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
+  const [cedulaError, setCedulaError] = useState("");
+  const [errors, setErrors] = useState<FormErrors>({});   
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     Nombre: "",
@@ -68,8 +77,14 @@ export default function Usuarios() {
     setFiltrados(resultado);
   }, [usuarios]);
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+
     const usuarioData = {
       Nombre: formData.Nombre,
       Cedula: formData.Cedula ? Number(formData.Cedula) : null,
@@ -79,25 +94,41 @@ export default function Usuarios() {
       admin: Number(formData.admin), // <-- Guardar admin como número
     };
 
-    if (editingUsuario) {
-      await supabase.from("Usuarios").update(usuarioData).eq("id", editingUsuario.id);
-    } else {
-      await supabase.from("Usuarios").insert(usuarioData);
-    }
+    try {
+      if (editingUsuario) {
+        await supabase.from("Usuarios").update(usuarioData).eq("id", editingUsuario.id);
+      } else {
+        await supabase.from("Usuarios").insert(usuarioData);
+      }
 
-    setFormData({
-      Nombre: "",
-      Cedula: "",
-      LimiteDeEgresos: "",
-      FechaDeCorte: "",
-      Estado: "true",
+      setFormData({
+        Nombre: "",
+        Cedula: "",
+        LimiteDeEgresos: "",
+        FechaDeCorte: "",
+        Estado: "true",
       admin: "1",
-    });
-    setIsDialogOpen(false);
-    setEditingUsuario(null);
-    await fetchUsuarios();
-    setResetSignal((prev) => prev + 1);
+      });
+      setErrors({});
+      setIsDialogOpen(false);
+      setEditingUsuario(null);
+      await fetchUsuarios();
+      setResetSignal((prev) => prev + 1);
+    } catch (error) {
+      console.error("Error guardando usuario:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+  setFormData((prev) => ({ ...prev, [field]: value }));
+};
+const handleLimiteChange = (value: string) => {
+  // Opcional: Validar que solo se permitan números y punto decimal
+  if (/^\d*\.?\d*$/.test(value)) {
+    setFormData((prev) => ({ ...prev, LimiteDeEgresos: value }));
+  }
+};
 
   const handleEdit = (usuario: Usuario) => {
     setEditingUsuario(usuario);
@@ -124,6 +155,36 @@ export default function Usuarios() {
     fetchUsuarios();
   };
 
+  function validarCedulaDominicana(cedula: string): boolean {
+  cedula = cedula.replace(/-/g, "");
+
+  if (!/^\d{11}$/.test(cedula)) return false;
+
+  const coeficientes = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2];
+  let suma = 0;
+
+  for (let i = 0; i < 10; i++) {
+    let producto = parseInt(cedula[i]) * coeficientes[i];
+    if (producto > 9) producto -= 9;
+    suma += producto;
+  }
+
+  const verificador = (10 - (suma % 10)) % 10;
+  return verificador === parseInt(cedula[10]);
+}
+  const validateForm = () => {
+    const newErrors: FormErrors = {};
+    if (!formData.Nombre.trim()) newErrors.Nombre = "El nombre es requerido.";
+    if (!formData.Cedula.trim()) newErrors.Cedula = "La cédula es requerida.";
+    else if (!validarCedulaDominicana(formData.Cedula)) newErrors.Cedula = "Cédula inválida.";
+    if (!formData.LimiteDeEgresos.trim()) newErrors.LimiteDeEgresos = "Límite de egresos requerido.";
+    else if (isNaN(Number(formData.LimiteDeEgresos))) newErrors.LimiteDeEgresos = "Debe ser un número válido.";
+    if (!formData.FechaDeCorte.trim()) newErrors.FechaDeCorte = "Fecha de corte requerida.";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -134,6 +195,7 @@ export default function Usuarios() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
+            className="bg-[#385bf0] hover:bg-[#132b95]"
               onClick={() => {
                 setEditingUsuario(null);
                 setFormData({
@@ -150,44 +212,93 @@ export default function Usuarios() {
               Nuevo Usuario
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
-              <DialogDescription>
-                {editingUsuario ? "Modifica los datos del usuario" : "Crea un nuevo usuario del sistema"}
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="space-y-3">
+              <DialogTitle className="text-2xl font-semibold flex items-center gap-2">
+                <User className="h-6 w-6 text-blue-600" />
+                {editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}
+              </DialogTitle>
+              <DialogDescription className="text-base">
+                {editingUsuario
+                  ? "Modifica los datos del usuario"
+                  : "Crea un nuevo usuario del sistema"}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label>Nombre</Label>
-                  <Input value={formData.Nombre} onChange={(e) => setFormData({ ...formData, Nombre: e.target.value })} required />
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                {/* Nombre */}
+                <div className="space-y-2">
+                  <Label htmlFor="nombre" className="text-sm font-medium flex items-center gap-2">
+                    <User className="h-4 w-4 text-blue-600" />
+                    Nombre Completo
+                  </Label>
+                  <Input
+                    id="nombre"
+                    placeholder="Ingresa el nombre completo"
+                    value={formData.Nombre}
+                    onChange={(e) => handleInputChange("Nombre", e.target.value)}
+                    className={errors.Nombre ? "border-blue-500 focus-visible:ring-blue-500" : ""}
+                    disabled={isLoading}
+                    required
+                  />
+                  {errors.Nombre && <p className="text-sm text-blue-700">{errors.Nombre}</p>}
                 </div>
-                <div className="grid gap-2">
-                  <Label>Cédula</Label>
-                  <Input type="number" value={formData.Cedula} onChange={(e) => setFormData({ ...formData, Cedula: e.target.value })} />
+
+                {/* Cédula */}
+                <div className="space-y-2">
+                  <Label htmlFor="cedula" className="text-sm font-medium flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-blue-600" />
+                    Cédula
+                  </Label>
+                  <Input
+                    id="cedula"
+                    placeholder="Número de cédula"
+                    value={formData.Cedula}
+                    onChange={(e) => handleInputChange("Cedula", e.target.value.replace(/\D/g, ""))}
+                    className={errors.Cedula ? "border-blue-500 focus-visible:ring-blue-500" : ""}
+                    disabled={isLoading}
+                    required
+                  />
+                  {errors.Cedula && <p className="text-sm text-blue-700">{errors.Cedula}</p>}
                 </div>
-                <div className="grid gap-2">
-                  <Label>Límite de Egresos</Label>
-                  <Input type="number" value={formData.LimiteDeEgresos} onChange={(e) => setFormData({ ...formData, LimiteDeEgresos: e.target.value })} />
+
+                {/* Límite de Egresos */}
+                <div className="space-y-2">
+                  <Label htmlFor="limite" className="text-sm font-medium flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                    Límite de Egresos
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="limite"
+                      placeholder="0"
+                      value={formData.LimiteDeEgresos}
+                      onChange={(e) => handleLimiteChange(e.target.value)}
+                      className={errors.LimiteDeEgresos ? "border-blue-500 focus-visible:ring-blue-500 pl-8" : "pl-8"}
+                      disabled={isLoading}
+                      required
+                    />
+                    <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-blue-400" />
+                  </div>
+                  {errors.LimiteDeEgresos && <p className="text-sm text-blue-700">{errors.LimiteDeEgresos}</p>}
                 </div>
-                <div className="grid gap-2">
-                  <Label>Fecha de Corte</Label>
-                  <Input type="date" value={formData.FechaDeCorte} onChange={(e) => setFormData({ ...formData, FechaDeCorte: e.target.value })} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Rol</Label>
-                  <Select value={formData.admin} onValueChange={(value) => setFormData({ ...formData, admin: value })}>
-                    <SelectTrigger>
-                      <SelectValue>
-                        {formData.admin === "2" ? "Admin" : "Usuario"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">Usuario</SelectItem>
-                      <SelectItem value="2">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                {/* Fecha de Corte */}
+                <div className="space-y-2">
+                  <Label htmlFor="fechaCorte" className="text-sm font-medium">
+                    Fecha de Corte
+                  </Label>
+                  <Input
+                    id="fechaCorte"
+                    type="date"
+                    value={formData.FechaDeCorte}
+                    onChange={(e) => handleInputChange("FechaDeCorte", e.target.value)}
+                    className={errors.FechaDeCorte ? "border-blue-500 focus-visible:ring-blue-500" : ""}
+                    disabled={isLoading}
+                    required
+                  />
+                  {errors.FechaDeCorte && <p className="text-sm text-blue-700">{errors.FechaDeCorte}</p>}
                 </div>
                 <div className="grid gap-2">
                   <Label>Estado</Label>
@@ -196,14 +307,40 @@ export default function Usuarios() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="true">Activo</SelectItem>
-                      <SelectItem value="false">Inactivo</SelectItem>
+                      <SelectItem value="true">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                          Activo
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="false">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                          Inactivo
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <DialogFooter>
-                <Button type="submit">{editingUsuario ? "Actualizar" : "Crear"}</Button>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isLoading}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="min-w-[100px] bg-blue-600 hover:bg-blue-700"
+                >
+                  {isLoading ? (
+                    "Guardando..."
+                  ) : editingUsuario ? (
+                    "Actualizar"
+                  ) : (
+                    "Crear Usuario"
+                  )}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>

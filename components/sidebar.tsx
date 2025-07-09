@@ -1,8 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import logo from "../public/WalletMate.png"
 import { cn } from "@/lib/utils"
 import {
   Home,
@@ -62,10 +64,8 @@ export function Sidebar() {
   return (
     <div className="bg-white w-64 shadow-lg border-r border-r-gray-200 min-h-screen flex flex-col justify-between">
       <div>
-        <div className="py-4">
-          <h2 className="text-2xl font-extrabold text-blue-700 tracking-wide text-center">
-            WalletMate
-          </h2>
+       <div className="py-4 px-6">
+          <Image src={logo} alt="WalletMate logo" width={180} height={50} />
         </div>
         <nav className="mt-6">
           {filteredNavigation.map((item) => {
