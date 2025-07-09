@@ -46,7 +46,8 @@ export default function TiposIngresos() {
     async function fetchData() {
       setLoading(true);
       try {
-        const data = await getTiposDeIngresos();
+        const id_user = Number(localStorage.getItem("user_id"));
+        const data = await getTiposDeIngresos(id_user);
         setTiposIngresos(data);
         setFiltrados(data);
       } catch (e: any) {
@@ -75,6 +76,12 @@ export default function TiposIngresos() {
     setLoading(true);
     setError(null);
     try {
+      const id_user = Number(localStorage.getItem("user_id"));
+      if (!id_user || isNaN(id_user)) {
+        setError("No se encontró el usuario logueado. Por favor, vuelve a iniciar sesión.");
+        setLoading(false);
+        return;
+      }
       if (editingTipo) {
         const updated = await updateTipoDeIngreso(editingTipo.id, {
           descripcion: formData.descripcion,
@@ -89,6 +96,7 @@ export default function TiposIngresos() {
         const created = await createTipoDeIngreso({
           descripcion: formData.descripcion,
           estado: formData.estado,
+          id_user: id_user,
         });
         const nuevaLista = [...tiposIngresos, created];
         setTiposIngresos(nuevaLista);

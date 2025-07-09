@@ -193,20 +193,22 @@ export async function deleteTipoDeEgreso(id) {
   return data
 }
 //funciones para tipos de ingresos
-export async function getTiposDeIngresos() {
+export async function getTiposDeIngresos(id_user) {
   const { data, error } = await supabase
     .from('TiposDeIngresos')
     .select('*')
-  if (error) throw error
-  return data
+    .eq('id_user', id_user);
+  if (error) throw error;
+  return data;
 }
 
-export async function createTipoDeIngreso({ descripcion, estado }) {
+export async function createTipoDeIngreso({ descripcion, estado, id_user }) {
   const { data, error } = await supabase
     .from('TiposDeIngresos')
     .insert([{
       Descripcion: descripcion,
-      Estado: estado
+      Estado: estado,
+      id_user: id_user // <-- Agrega el id_user aquí
     }])
     .select()
   if (error) throw error

@@ -42,8 +42,15 @@ export default function LoginPage() {
     }
 
     if (data && data.length === 1) {
+      // Solo permite iniciar sesión si Estado es true (activo)
+      if (data[0].Estado !== true) {
+        setError("Usuario desactivado")
+        return
+      }
       localStorage.setItem("isLoggedIn", "true")
       localStorage.setItem("usuario", nombre)
+      localStorage.setItem("admin", data[0].admin)
+      localStorage.setItem("user_id", data[0].id) // <-- AGREGA ESTA LÍNEA
       router.push("/tipos-ingresos")
     } else {
       setError("Nombre o contraseña incorrectos.")
