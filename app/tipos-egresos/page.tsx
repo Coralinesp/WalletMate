@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useEffect, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -13,81 +13,103 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit, Trash2 } from "lucide-react"
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Edit, Trash2 } from "lucide-react";
+
 import {
   getTiposDeEgresos,
   createTipoDeEgreso,
   updateTipoDeEgreso,
   deleteTipoDeEgreso,
-} from "../back/supabasefunctions"
+} from "../back/supabasefunctions";
+
+import TiposDeEgresosFiltro, { FiltrosTiposEgresos } from "@/components/ui/Filtros/TiposDeEgresosFiltro";
 
 interface TipoEgreso {
-  id: number
-  Descripcion: string
-  Estado: boolean
+  id: number;
+  Descripcion: string;
+  Estado: boolean;
 }
 
 export default function TiposEgresos() {
-  const [tiposEgresos, setTiposEgresos] = useState<TipoEgreso[]>([])
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingTipo, setEditingTipo] = useState<TipoEgreso | null>(null)
-  const [formData, setFormData] = useState({ Descripcion: "", Estado: true })
+  const [tiposEgresos, setTiposEgresos] = useState<TipoEgreso[]>([]);
+  const [filtrados, setFiltrados] = useState<TipoEgreso[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTipo, setEditingTipo] = useState<TipoEgreso | null>(null);
+  const [formData, setFormData] = useState({ Descripcion: "", Estado: true });
+  const [resetSignal, setResetSignal] = useState(0);
 
   const loadTipos = async () => {
     try {
-      const data = await getTiposDeEgresos()
-      setTiposEgresos(data)
+      const data = await getTiposDeEgresos();
+      setTiposEgresos(data);
+      setFiltrados(data);
     } catch (error) {
-      console.error("Error cargando tipos de egresos:", error)
+      console.error("Error cargando tipos de egresos:", error);
     }
-  }
+  };
 
   useEffect(() => {
-    loadTipos()
-  }, [])
+    loadTipos();
+  }, []);
+
+  const handleFiltrar = useCallback((filtros: FiltrosTiposEgresos) => {
+    const resultado = tiposEgresos.filter((tipo) => {
+      const matchTexto = tipo.Descripcion.toLowerCase().includes(filtros.texto.toLowerCase());
+      const matchEstado = filtros.estado ? String(tipo.Estado) === filtros.estado : true;
+      return matchTexto && matchEstado;
+    });
+    setFiltrados(resultado);
+  }, [tiposEgresos]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
       if (editingTipo) {
         const updated = await updateTipoDeEgreso(editingTipo.id, {
           descripcion: formData.Descripcion,
           estado: formData.Estado,
-        })
-        setTiposEgresos((prev) =>
-          prev.map((tipo) => (tipo.id === updated.id ? updated : tipo))
-        )
+        });
+        const nuevaLista = tiposEgresos.map((tipo) =>
+          tipo.id === updated.id ? updated : tipo
+        );
+        setTiposEgresos(nuevaLista);
+        setFiltrados(nuevaLista);
       } else {
         const nuevo = await createTipoDeEgreso({
           descripcion: formData.Descripcion,
           estado: formData.Estado,
-        })
-        setTiposEgresos((prev) => [...prev, nuevo])
+        });
+        const nuevaLista = [...tiposEgresos, nuevo];
+        setTiposEgresos(nuevaLista);
+        setFiltrados(nuevaLista);
       }
-      setIsDialogOpen(false)
-      setEditingTipo(null)
-      setFormData({ Descripcion: "", Estado: true })
+      setIsDialogOpen(false);
+      setEditingTipo(null);
+      setFormData({ Descripcion: "", Estado: true });
+      setResetSignal((prev) => prev + 1);
     } catch (error) {
-      console.error("Error guardando tipo de egreso:", error)
+      console.error("Error guardando tipo de egreso:", error);
     }
-  }
+  };
 
   const handleEdit = (tipo: TipoEgreso) => {
-    setEditingTipo(tipo)
-    setFormData({ Descripcion: tipo.Descripcion, Estado: tipo.Estado })
-    setIsDialogOpen(true)
-  }
+    setEditingTipo(tipo);
+    setFormData({ Descripcion: tipo.Descripcion, Estado: tipo.Estado });
+    setIsDialogOpen(true);
+  };
 
   const handleDelete = async (id: number) => {
     try {
-      await deleteTipoDeEgreso(id)
-      setTiposEgresos((prev) => prev.filter((tipo) => tipo.id !== id))
+      await deleteTipoDeEgreso(id);
+      const nuevaLista = tiposEgresos.filter((tipo) => tipo.id !== id);
+      setTiposEgresos(nuevaLista);
+      setFiltrados(nuevaLista);
     } catch (error) {
-      console.error("Error eliminando tipo de egreso:", error)
+      console.error("Error eliminando tipo de egreso:", error);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -100,8 +122,8 @@ export default function TiposEgresos() {
           <DialogTrigger asChild>
             <Button
               onClick={() => {
-                setEditingTipo(null)
-                setFormData({ Descripcion: "", Estado: true })
+                setEditingTipo(null);
+                setFormData({ Descripcion: "", Estado: true });
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -148,10 +170,12 @@ export default function TiposEgresos() {
         </Dialog>
       </div>
 
+      <TiposDeEgresosFiltro onFiltrar={handleFiltrar} resetSignal={resetSignal} />
+
       <Card>
         <CardHeader>
           <CardTitle>Lista de Tipos de Egresos</CardTitle>
-          <CardDescription>{tiposEgresos.length} tipos de egresos registrados</CardDescription>
+          <CardDescription>{filtrados.length} tipos de egresos registrados</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -164,7 +188,7 @@ export default function TiposEgresos() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tiposEgresos.map((tipo) => (
+              {filtrados.map((tipo) => (
                 <TableRow key={tipo.id}>
                   <TableCell className="font-medium">{tipo.id}</TableCell>
                   <TableCell>{tipo.Descripcion}</TableCell>
@@ -194,5 +218,5 @@ export default function TiposEgresos() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

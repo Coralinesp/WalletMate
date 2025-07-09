@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import supabase from "../back/supabase"
+import { useEffect, useState, useCallback } from "react";
+import supabase from "../back/supabase";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -16,55 +16,70 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, User } from "lucide-react"
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Edit, Trash2, User } from "lucide-react";
+
+import UsuariosFiltro, { FiltrosUsuarios } from "@/components/ui/Filtros/UsuariosFiltro";
 
 interface Usuario {
-  id: number
-  Nombre: string
-  Cedula: number | null
-  LimiteDeEgresos: number | null
-  FechaDeCorte: string | null
-  Estado: boolean | null
+  id: number;
+  Nombre: string;
+  Cedula: number | null;
+  LimiteDeEgresos: number | null;
+  FechaDeCorte: string | null;
+  Estado: boolean | null;
 }
 
 export default function Usuarios() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([])
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [filtrados, setFiltrados] = useState<Usuario[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
+  const [resetSignal, setResetSignal] = useState(0);
+
   const [formData, setFormData] = useState({
     Nombre: "",
     Cedula: "",
     LimiteDeEgresos: "",
     FechaDeCorte: "",
     Estado: "true",
-  })
+  });
 
   const fetchUsuarios = async () => {
-    const { data, error } = await supabase.from("Usuarios").select("*")
-    if (!error && data) setUsuarios(data)
-  }
+    const { data, error } = await supabase.from("Usuarios").select("*");
+    if (!error && data) {
+      setUsuarios(data);
+      setFiltrados(data);
+    }
+  };
 
   useEffect(() => {
-    fetchUsuarios()
-  }, [])
+    fetchUsuarios();
+  }, []);
+
+  const handleFiltrar = useCallback((filtros: FiltrosUsuarios) => {
+    const resultado = usuarios.filter((u) =>
+      filtros.estado ? String(u.Estado) === filtros.estado : true
+    );
+    setFiltrados(resultado);
+  }, [usuarios]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     const usuarioData = {
       Nombre: formData.Nombre,
       Cedula: formData.Cedula ? Number(formData.Cedula) : null,
       LimiteDeEgresos: formData.LimiteDeEgresos ? Number(formData.LimiteDeEgresos) : null,
       FechaDeCorte: formData.FechaDeCorte,
       Estado: formData.Estado === "true",
-    }
+    };
 
     if (editingUsuario) {
-      await supabase.from("Usuarios").update(usuarioData).eq("id", editingUsuario.id)
+      await supabase.from("Usuarios").update(usuarioData).eq("id", editingUsuario.id);
     } else {
-      await supabase.from("Usuarios").insert(usuarioData)
+      await supabase.from("Usuarios").insert(usuarioData);
     }
 
     setFormData({
@@ -73,28 +88,29 @@ export default function Usuarios() {
       LimiteDeEgresos: "",
       FechaDeCorte: "",
       Estado: "true",
-    })
-    setIsDialogOpen(false)
-    setEditingUsuario(null)
-    fetchUsuarios()
-  }
+    });
+    setIsDialogOpen(false);
+    setEditingUsuario(null);
+    await fetchUsuarios();
+    setResetSignal((prev) => prev + 1);
+  };
 
   const handleEdit = (usuario: Usuario) => {
-    setEditingUsuario(usuario)
+    setEditingUsuario(usuario);
     setFormData({
       Nombre: usuario.Nombre || "",
       Cedula: usuario.Cedula?.toString() || "",
       LimiteDeEgresos: usuario.LimiteDeEgresos?.toString() || "",
       FechaDeCorte: usuario.FechaDeCorte || "",
       Estado: usuario.Estado?.toString() || "true",
-    })
-    setIsDialogOpen(true)
-  }
+    });
+    setIsDialogOpen(true);
+  };
 
   const handleDelete = async (id: number) => {
-    await supabase.from("Usuarios").delete().eq("id", id)
-    fetchUsuarios()
-  }
+    await supabase.from("Usuarios").delete().eq("id", id);
+    fetchUsuarios();
+  };
 
   return (
     <div className="space-y-6">
@@ -107,14 +123,14 @@ export default function Usuarios() {
           <DialogTrigger asChild>
             <Button
               onClick={() => {
-                setEditingUsuario(null)
+                setEditingUsuario(null);
                 setFormData({
                   Nombre: "",
                   Cedula: "",
                   LimiteDeEgresos: "",
                   FechaDeCorte: "",
                   Estado: "true",
-                })
+                });
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -144,11 +160,7 @@ export default function Usuarios() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Fecha de Corte</Label>
-                  <Input
-                    type="date"
-                    value={formData.FechaDeCorte}
-                    onChange={(e) => setFormData({ ...formData, FechaDeCorte: e.target.value })}
-                  />
+                  <Input type="date" value={formData.FechaDeCorte} onChange={(e) => setFormData({ ...formData, FechaDeCorte: e.target.value })} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Estado</Label>
@@ -171,6 +183,8 @@ export default function Usuarios() {
         </Dialog>
       </div>
 
+      <UsuariosFiltro onFiltrar={handleFiltrar} resetSignal={resetSignal} />
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -178,7 +192,7 @@ export default function Usuarios() {
             <User className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{usuarios.length}</div>
+            <div className="text-2xl font-bold">{filtrados.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -188,7 +202,7 @@ export default function Usuarios() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {usuarios.filter((u) => u.Estado === true).length}
+              {filtrados.filter((u) => u.Estado === true).length}
             </div>
           </CardContent>
         </Card>
@@ -197,7 +211,7 @@ export default function Usuarios() {
       <Card>
         <CardHeader>
           <CardTitle>Lista de Usuarios</CardTitle>
-          <CardDescription>{usuarios.length} usuarios registrados en el sistema</CardDescription>
+          <CardDescription>{filtrados.length} usuarios registrados en el sistema</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -213,7 +227,7 @@ export default function Usuarios() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usuarios.map((usuario) => (
+              {filtrados.map((usuario) => (
                 <TableRow key={usuario.id}>
                   <TableCell>{usuario.id}</TableCell>
                   <TableCell>{usuario.Nombre}</TableCell>
@@ -242,5 +256,5 @@ export default function Usuarios() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
