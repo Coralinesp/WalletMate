@@ -160,7 +160,7 @@ export default function GestionDeEgresos() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditingEgreso(null); setFormData({ TipoDeEgreso: "", RenglonDeEgreso: "", TipoDePagoxDefecto: "", Descripcion: "", Estado: true }) }}>
+            <Button className="bg-[#385bf0] hover:bg-[#132b95]" onClick={() => { setEditingEgreso(null); setFormData({ TipoDeEgreso: "", RenglonDeEgreso: "", TipoDePagoxDefecto: "", Descripcion: "", Estado: true }) }}>
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Egreso
             </Button>
