@@ -66,6 +66,35 @@ export default function Usuarios() {
     }
   };
 
+  async function deleteUsuarioConDatos(id: number) {
+  try {
+    // Paso 1: Eliminar todos los tipos de pago creados por este usuario
+    await supabase.from("TiposDePago").delete().eq("id_user", id);
+
+    // Paso 2: Eliminar todos los tipos de ingresos
+    await supabase.from("TiposDeIngresos").delete().eq("id_user", id);
+
+    // Paso 3: Eliminar todos los tipos de egresos
+    await supabase.from("TiposDeEgresos").delete().eq("id_user", id);
+
+    // Si tienes otras tablas relacionadas, las colocas aquí antes del DELETE del usuario
+
+    // Paso 4: Finalmente, eliminar el usuario
+    const { error } = await supabase.from("Usuarios").delete().eq("id", id);
+
+    if (error) {
+      alert("Error al eliminar el usuario.");
+      console.error(error);
+    } else {
+      alert("Usuario y todos sus datos relacionados eliminados correctamente.");
+    }
+  } catch (err) {
+    alert("Error inesperado eliminando el usuario.");
+    console.error(err);
+  }
+}
+
+
   useEffect(() => {
     fetchUsuarios();
   }, []);
@@ -144,11 +173,12 @@ const handleLimiteChange = (value: string) => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
-      await supabase.from("Usuarios").delete().eq("id", id);
-      await fetchUsuarios(); // Espera a que termine antes de refrescar
-    }
-  };
+  if (!window.confirm("¿Estás seguro de que deseas eliminar este usuario y sus datos relacionados?")) return;
+  await deleteUsuarioConDatos(id);
+  await fetchUsuarios(); // Refresca la tabla
+};
+
+
 
   const handleAdminChange = async (id: number, newAdmin: number) => {
     await supabase.from("Usuarios").update({ admin: newAdmin }).eq("id", id);
