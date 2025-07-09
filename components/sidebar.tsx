@@ -31,26 +31,26 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [isAdmin, setIsAdmin] = useState<boolean>(false)
 
-  // Inicializa y escucha cambios de sesión
   useEffect(() => {
     const checkLogin = () => {
-      setIsLoggedIn(localStorage.getItem("isLoggedIn") === "true")
+      const loggedIn = localStorage.getItem("isLoggedIn") === "true"
+      const adminVal = parseInt(localStorage.getItem("admin") || "0")
+      setIsLoggedIn(loggedIn)
+      setIsAdmin(adminVal === 2)
     }
 
     checkLogin()
 
-    // 🔁 Escucha los cambios de sesión emitidos por login/logout
     window.addEventListener("loginStatusChanged", checkLogin)
-
-    return () => {
-      window.removeEventListener("loginStatusChanged", checkLogin)
-    }
+    return () => window.removeEventListener("loginStatusChanged", checkLogin)
   }, [])
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn")
     localStorage.removeItem("usuario")
+    localStorage.removeItem("admin")
     window.dispatchEvent(new Event("loginStatusChanged"))
     router.push("/")
   }
@@ -58,13 +58,15 @@ export function Sidebar() {
   if (isLoggedIn === null) return null
 
   const filteredNavigation = isLoggedIn
-    ? navigation.filter((item) => item.name !== "Dashboard") // Oculta Dashboard si ya inició sesión
-    : navigation.filter((item) => item.name === "Dashboard") // Solo muestra Dashboard si no ha iniciado
+    ? navigation
+        .filter((item) => item.name !== "Dashboard")
+        .filter((item) => item.name !== "Usuarios" || isAdmin)
+    : navigation.filter((item) => item.name === "Dashboard")
 
   return (
     <div className="bg-white w-64 shadow-lg border-r border-r-gray-200 min-h-screen flex flex-col justify-between">
       <div>
-       <div className="py-4 px-6">
+        <div className="py-4 px-6">
           <Image src={logo} alt="WalletMate logo" width={180} height={50} />
         </div>
         <nav className="mt-6">

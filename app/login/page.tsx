@@ -13,15 +13,11 @@ export default function LoginPage() {
   const [isRegistering, setIsRegistering] = useState(false)
   const [error, setError] = useState("")
 
-  // Datos comunes
   const [nombre, setNombre] = useState("")
   const [password, setPassword] = useState("")
-
-  // Datos solo para registro
   const [cedula, setCedula] = useState("")
   const [limiteDeEgresos, setLimiteDeEgresos] = useState("")
 
-  // 🔐 Redirige si ya estás autenticado
   useEffect(() => {
     if (localStorage.getItem("isLoggedIn") === "true") {
       router.push("/tipos-ingresos")
@@ -42,16 +38,15 @@ export default function LoginPage() {
     }
 
     if (data && data.length === 1) {
-      // DEPURACIÓN: muestra el valor real de Estado
-      console.log("Valor de Estado:", data[0].Estado)
-      // Solo permite si Estado es true (booleano)
       if (data[0].Estado !== true) {
         setError("Usuario desactivado.")
         return
       }
+
       localStorage.setItem("isLoggedIn", "true")
       localStorage.setItem("usuario", nombre)
-      localStorage.setItem("user_id", data[0].id);
+      localStorage.setItem("user_id", data[0].id.toString())
+      localStorage.setItem("admin", data[0].Admin?.toString() || "0") // 👈 Guardar valor admin
       window.dispatchEvent(new Event("loginStatusChanged"))
       router.push("/tipos-ingresos")
     } else {
@@ -67,9 +62,7 @@ export default function LoginPage() {
     }
 
     const fechaActual = new Date()
-    const fechaFormateada = `${fechaActual.getFullYear()}-${(fechaActual.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}-${fechaActual.getDate().toString().padStart(2, "0")}`
+    const fechaFormateada = `${fechaActual.getFullYear()}-${(fechaActual.getMonth() + 1).toString().padStart(2, "0")}-${fechaActual.getDate().toString().padStart(2, "0")}`
 
     const { error: insertError } = await supabase.from("Usuarios").insert([
       {
@@ -79,6 +72,7 @@ export default function LoginPage() {
         FechaDeCorte: fechaFormateada,
         Estado: true,
         password: password,
+        Admin: 0, // 👈 Por defecto, no admin
       },
     ])
 
@@ -87,6 +81,7 @@ export default function LoginPage() {
     } else {
       localStorage.setItem("isLoggedIn", "true")
       localStorage.setItem("usuario", nombre)
+      localStorage.setItem("admin", "0")
       window.dispatchEvent(new Event("loginStatusChanged"))
       router.push("/tipos-ingresos")
     }
@@ -97,9 +92,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader>
           <CardTitle>{isRegistering ? "Registro de Usuario" : "Inicio de Sesión"}</CardTitle>
-          <CardDescription>
-            {isRegistering ? "Crea tu cuenta para comenzar" : "Accede con tus credenciales"}
-          </CardDescription>
+          <CardDescription>{isRegistering ? "Crea tu cuenta para comenzar" : "Accede con tus credenciales"}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -108,33 +101,18 @@ export default function LoginPage() {
           </div>
           <div>
             <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
 
           {isRegistering && (
             <>
               <div>
                 <Label htmlFor="cedula">Cédula</Label>
-                <Input
-                  id="cedula"
-                  type="number"
-                  value={cedula}
-                  onChange={(e) => setCedula(e.target.value)}
-                />
+                <Input id="cedula" type="number" value={cedula} onChange={(e) => setCedula(e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="limite">Límite de Egresos</Label>
-                <Input
-                  id="limite"
-                  type="number"
-                  value={limiteDeEgresos}
-                  onChange={(e) => setLimiteDeEgresos(e.target.value)}
-                />
+                <Input id="limite" type="number" value={limiteDeEgresos} onChange={(e) => setLimiteDeEgresos(e.target.value)} />
               </div>
             </>
           )}
@@ -147,10 +125,7 @@ export default function LoginPage() {
 
           <p className="text-sm text-center">
             {isRegistering ? "¿Ya tienes una cuenta?" : "¿No tienes una cuenta?"}{" "}
-            <button
-              onClick={() => setIsRegistering(!isRegistering)}
-              className="text-blue-600 hover:underline"
-            >
+            <button onClick={() => setIsRegistering(!isRegistering)} className="text-blue-600 hover:underline">
               {isRegistering ? "Inicia sesión" : "Regístrate"}
             </button>
           </p>
