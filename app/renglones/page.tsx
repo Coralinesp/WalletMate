@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useEffect, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -13,81 +13,100 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit, Trash2 } from "lucide-react"
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Edit, Trash2 } from "lucide-react";
 
 import {
   getRenglonesDeEgresos,
   createRenglonDeEgreso,
   updateRenglonDeEgreso,
   deleteRenglonDeEgreso
-} from "../back/supabasefunctions"
+} from "../back/supabasefunctions";
+
+import RenglonesDeEgresosFiltro, { FiltrosRenglones } from "@/components/ui/Filtros/RenglonesDeEgresosFiltro";
 
 interface RenglonEgreso {
-  id: number
-  Descripcion: string
-  Estado: boolean
+  id: number;
+  Descripcion: string;
+  Estado: boolean;
 }
 
 export default function RenglonesDeEgresos() {
-  const [renglones, setRenglones] = useState<RenglonEgreso[]>([])
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingRenglon, setEditingRenglon] = useState<RenglonEgreso | null>(null)
-  const [formData, setFormData] = useState({ Descripcion: "", Estado: true })
+  const [renglones, setRenglones] = useState<RenglonEgreso[]>([]);
+  const [filtrados, setFiltrados] = useState<RenglonEgreso[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingRenglon, setEditingRenglon] = useState<RenglonEgreso | null>(null);
+  const [formData, setFormData] = useState({ Descripcion: "", Estado: true });
+  const [resetSignal, setResetSignal] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await getRenglonesDeEgresos()
-        setRenglones(data)
+        const data = await getRenglonesDeEgresos();
+        setRenglones(data);
+        setFiltrados(data);
       } catch (error) {
-        console.error("Error al obtener los renglones:", error)
+        console.error("Error al obtener los renglones:", error);
       }
     }
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
+
+  const handleFiltrar = useCallback((filtros: FiltrosRenglones) => {
+    const resultado = renglones.filter((r) => {
+      const matchTexto = r.Descripcion.toLowerCase().includes(filtros.texto.toLowerCase());
+      const matchEstado = filtros.estado ? String(r.Estado) === filtros.estado : true;
+      return matchTexto && matchEstado;
+    });
+    setFiltrados(resultado);
+  }, [renglones]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
       if (editingRenglon) {
         const actualizado = await updateRenglonDeEgreso(editingRenglon.id, {
           descripcion: formData.Descripcion,
           estado: formData.Estado,
-        })
-        setRenglones((prev) =>
-          prev.map((r) => (r.id === actualizado.id ? actualizado : r))
-        )
+        });
+        const nuevaLista = renglones.map((r) => (r.id === actualizado.id ? actualizado : r));
+        setRenglones(nuevaLista);
+        setFiltrados(nuevaLista);
       } else {
         const nuevo = await createRenglonDeEgreso({
           descripcion: formData.Descripcion,
           estado: formData.Estado,
-        })
-        setRenglones((prev) => [...prev, nuevo])
+        });
+        const nuevaLista = [...renglones, nuevo];
+        setRenglones(nuevaLista);
+        setFiltrados(nuevaLista);
       }
-      setIsDialogOpen(false)
-      setEditingRenglon(null)
-      setFormData({ Descripcion: "", Estado: true })
+      setIsDialogOpen(false);
+      setEditingRenglon(null);
+      setFormData({ Descripcion: "", Estado: true });
+      setResetSignal((prev) => prev + 1); // resetea filtros
     } catch (error: any) {
-      console.error("Error al guardar el renglón:", error?.message || error)
+      console.error("Error al guardar el renglón:", error?.message || error);
     }
-  }
+  };
 
   const handleEdit = (r: RenglonEgreso) => {
-    setEditingRenglon(r)
-    setFormData({ Descripcion: r.Descripcion, Estado: r.Estado })
-    setIsDialogOpen(true)
-  }
+    setEditingRenglon(r);
+    setFormData({ Descripcion: r.Descripcion, Estado: r.Estado });
+    setIsDialogOpen(true);
+  };
 
   const handleDelete = async (id: number) => {
     try {
-      await deleteRenglonDeEgreso(id)
-      setRenglones((prev) => prev.filter((r) => r.id !== id))
+      await deleteRenglonDeEgreso(id);
+      const nuevaLista = renglones.filter((r) => r.id !== id);
+      setRenglones(nuevaLista);
+      setFiltrados(nuevaLista);
     } catch (error) {
-      console.error("Error al eliminar el renglón:", error)
+      console.error("Error al eliminar el renglón:", error);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -100,8 +119,8 @@ export default function RenglonesDeEgresos() {
           <DialogTrigger asChild>
             <Button
               onClick={() => {
-                setEditingRenglon(null)
-                setFormData({ Descripcion: "", Estado: true })
+                setEditingRenglon(null);
+                setFormData({ Descripcion: "", Estado: true });
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -136,17 +155,17 @@ export default function RenglonesDeEgresos() {
                   <Label htmlFor="estado">Estado</Label>
                   <select
                     id="estado"
-                    value={formData.Estado ? "activo" : "inactivo"}
+                    value={formData.Estado ? "true" : "false"}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        Estado: e.target.value === "activo" ? true : false,
+                        Estado: e.target.value === "true",
                       }))
                     }
                     className="border rounded px-2 py-1"
                   >
-                    <option value="activo">Activo</option>
-                    <option value="inactivo">Inactivo</option>
+                    <option value="true">Activo</option>
+                    <option value="false">Inactivo</option>
                   </select>
                 </div>
               </div>
@@ -158,10 +177,13 @@ export default function RenglonesDeEgresos() {
         </Dialog>
       </div>
 
+      {/* Filtro */}
+      <RenglonesDeEgresosFiltro onFiltrar={handleFiltrar} resetSignal={resetSignal} />
+
       <Card>
         <CardHeader>
           <CardTitle>Lista de Renglones</CardTitle>
-          <CardDescription>{renglones.length} renglones registrados</CardDescription>
+          <CardDescription>{filtrados.length} renglones registrados</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -174,7 +196,7 @@ export default function RenglonesDeEgresos() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {renglones.map((r) => (
+              {filtrados.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.id}</TableCell>
                   <TableCell>{r.Descripcion}</TableCell>
@@ -204,5 +226,5 @@ export default function RenglonesDeEgresos() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

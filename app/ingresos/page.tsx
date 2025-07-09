@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Edit, Trash2 } from "lucide-react"
+import GestionDeIngresosFiltro from "../../components/ui/Filtros/GestionDeIngresosFiltro"
 
 interface GestionIngreso {
   id: number
@@ -35,6 +36,7 @@ interface Opcion {
 
 export default function GestionDeIngresos() {
   const [ingresos, setIngresos] = useState<GestionIngreso[]>([])
+  const [filtrados, setFiltrados] = useState<GestionIngreso[]>([])
   const [tiposDeIngreso, setTiposDeIngreso] = useState<Opcion[]>([])
   const [usuarios, setUsuarios] = useState<Opcion[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -51,7 +53,10 @@ export default function GestionDeIngresos() {
     const { data: tipos } = await supabase.from("TiposDeIngresos").select("id, Descripcion")
     const { data: usuarios } = await supabase.from("Usuarios").select("id, Nombre")
 
-    if (ingresos) setIngresos(ingresos as GestionIngreso[])
+    if (ingresos) {
+      setIngresos(ingresos as GestionIngreso[])
+      setFiltrados(ingresos as GestionIngreso[])
+    }
     if (tipos) setTiposDeIngreso(tipos)
     if (usuarios) setUsuarios(usuarios)
   }
@@ -59,6 +64,26 @@ export default function GestionDeIngresos() {
   useEffect(() => {
     fetchData()
   }, [])
+
+  const handleFiltrar = (filtros: {
+    texto: string;
+    tipoDeIngreso: string;
+    usuario: string;
+    estado: string;
+  }) => {
+    const resultado = ingresos.filter((ing) => {
+      const tipo = tiposDeIngreso.find((t) => t.id === ing.TipoDeIngreso)?.Descripcion || ""
+      const user = usuarios.find((u) => u.id === ing.Usuario)?.Nombre || ""
+
+      const matchTexto = ing.Descripcion?.toLowerCase().includes(filtros.texto.toLowerCase()) ?? false
+      const matchTipo = filtros.tipoDeIngreso ? tipo === filtros.tipoDeIngreso : true
+      const matchUsuario = filtros.usuario ? user === filtros.usuario : true
+      const matchEstado = filtros.estado ? String(ing.Estado) === filtros.estado : true
+
+      return matchTexto && matchTipo && matchUsuario && matchEstado
+    })
+    setFiltrados(resultado)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,7 +103,8 @@ export default function GestionDeIngresos() {
     setFormData({ TipoDeIngreso: "", Descripcion: "", Usuario: "", Estado: true })
     setEditingIngreso(null)
     setIsDialogOpen(false)
-    fetchData()
+    await fetchData()
+    handleFiltrar({ texto: "", tipoDeIngreso: "", usuario: "", estado: "" })
   }
 
   const handleEdit = (ingreso: GestionIngreso) => {
@@ -182,10 +208,16 @@ export default function GestionDeIngresos() {
         </Dialog>
       </div>
 
+      <GestionDeIngresosFiltro
+        onFiltrar={handleFiltrar}
+        tiposDeIngreso={tiposDeIngreso}
+        usuarios={usuarios}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Lista de Ingresos</CardTitle>
-          <CardDescription>{ingresos.length} ingresos registrados</CardDescription>
+          <CardDescription>{filtrados.length} ingresos registrados</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -200,7 +232,7 @@ export default function GestionDeIngresos() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ingresos.map((ing) => (
+              {filtrados.map((ing) => (
                 <TableRow key={ing.id}>
                   <TableCell>{ing.id}</TableCell>
                   <TableCell>

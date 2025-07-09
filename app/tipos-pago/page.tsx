@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Edit, Trash2 } from "lucide-react"
+import TiposDePagoFiltro from "../../components/ui/Filtros/TiposDePagoFiltro"
 
 interface TipoDePago {
   id: number
@@ -27,18 +28,31 @@ interface TipoDePago {
 
 export default function TiposPago() {
   const [tiposPago, setTiposPago] = useState<TipoDePago[]>([])
+  const [filtrados, setFiltrados] = useState<TipoDePago[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTipo, setEditingTipo] = useState<TipoDePago | null>(null)
   const [formData, setFormData] = useState({ Descripcion: "", Estado: true })
 
   const fetchTiposPago = async () => {
     const { data, error } = await supabase.from("TiposDePago").select("*").order("id", { ascending: true })
-    if (!error && data) setTiposPago(data as TipoDePago[])
+    if (!error && data) {
+      setTiposPago(data as TipoDePago[])
+      setFiltrados(data as TipoDePago[])
+    }
   }
 
   useEffect(() => {
     fetchTiposPago()
   }, [])
+
+  const handleFiltrar = (filtros: { texto: string; estado: string }) => {
+    const resultado = tiposPago.filter((tipo) => {
+      const matchTexto = tipo.Descripcion?.toLowerCase().includes(filtros.texto.toLowerCase()) ?? false
+      const matchEstado = filtros.estado ? String(tipo.Estado) === filtros.estado : true
+      return matchTexto && matchEstado
+    })
+    setFiltrados(resultado)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,34 +60,26 @@ export default function TiposPago() {
     if (editingTipo) {
       const { error } = await supabase
         .from("TiposDePago")
-        .update({
-          Descripcion: formData.Descripcion,
-          Estado: formData.Estado,
-        })
+        .update({ Descripcion: formData.Descripcion, Estado: formData.Estado })
         .eq("id", editingTipo.id)
 
-      if (!error) fetchTiposPago()
+      if (!error) await fetchTiposPago()
     } else {
-      const { error } = await supabase.from("TiposDePago").insert([
-        {
-          Descripcion: formData.Descripcion,
-          Estado: formData.Estado,
-        },
-      ])
-      if (!error) fetchTiposPago()
+      const { error } = await supabase
+        .from("TiposDePago")
+        .insert([{ Descripcion: formData.Descripcion, Estado: formData.Estado }])
+      if (!error) await fetchTiposPago()
     }
 
     setIsDialogOpen(false)
     setEditingTipo(null)
     setFormData({ Descripcion: "", Estado: true })
+    handleFiltrar({ texto: "", estado: "" })
   }
 
   const handleEdit = (tipo: TipoDePago) => {
     setEditingTipo(tipo)
-    setFormData({
-      Descripcion: tipo.Descripcion || "",
-      Estado: tipo.Estado ?? true,
-    })
+    setFormData({ Descripcion: tipo.Descripcion || "", Estado: tipo.Estado ?? true })
     setIsDialogOpen(true)
   }
 
@@ -142,10 +148,12 @@ export default function TiposPago() {
         </Dialog>
       </div>
 
+      <TiposDePagoFiltro onFiltrar={handleFiltrar} />
+
       <Card>
         <CardHeader>
           <CardTitle>Lista de Tipos de Pago</CardTitle>
-          <CardDescription>{tiposPago.length} tipos de pago registrados</CardDescription>
+          <CardDescription>{filtrados.length} tipos de pago registrados</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -158,7 +166,7 @@ export default function TiposPago() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tiposPago.map((tipo) => (
+              {filtrados.map((tipo) => (
                 <TableRow key={tipo.id}>
                   <TableCell className="font-medium">{tipo.id}</TableCell>
                   <TableCell>{tipo.Descripcion}</TableCell>
