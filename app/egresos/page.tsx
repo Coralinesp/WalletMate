@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Edit, Trash2 } from "lucide-react"
+import GestionDeEgresosFiltro from "../../components/ui/Filtros/GestionDeEgresosFiltro"
 
 interface Egreso {
   id: number
@@ -36,6 +37,7 @@ interface Opcion {
 
 export default function GestionDeEgresos() {
   const [egresos, setEgresos] = useState<Egreso[]>([])
+  const [egresosFiltrados, setEgresosFiltrados] = useState<Egreso[]>([])
   const [tiposDeEgreso, setTiposDeEgreso] = useState<Opcion[]>([])
   const [renglones, setRenglones] = useState<Opcion[]>([])
   const [tiposDePago, setTiposDePago] = useState<Opcion[]>([])
@@ -55,7 +57,10 @@ export default function GestionDeEgresos() {
     const { data: renglones } = await supabase.from("RenglonesDeEgresos").select("id, Descripcion")
     const { data: pagos } = await supabase.from("TiposDePago").select("id, Descripcion")
 
-    if (egresos) setEgresos(egresos as Egreso[])
+    if (egresos) {
+      setEgresos(egresos as Egreso[])
+      setEgresosFiltrados(egresos as Egreso[])
+    }
     if (tipos) setTiposDeEgreso(tipos)
     if (renglones) setRenglones(renglones)
     if (pagos) setTiposDePago(pagos)
@@ -65,6 +70,35 @@ export default function GestionDeEgresos() {
     fetchData()
   }, [])
 
+  const handleFiltrar = (filtros: {
+    texto: string;
+    tipoDeEgreso: string;
+    renglonDeEgreso: string;
+    tipoDePago: string;
+    estado: string;
+  }) => {
+    const resultado = egresos.filter((eg) => {
+      const tipo = tiposDeEgreso.find((t) => t.id === eg.TipoDeEgreso)?.Descripcion || ""
+      const renglon = renglones.find((r) => r.id === eg.RenglonDeEgreso)?.Descripcion || ""
+      const pago = tiposDePago.find((p) => p.id === eg.TipoDePagoxDefecto)?.Descripcion || ""
+
+      const matchTexto = eg.Descripcion?.toLowerCase().includes(filtros.texto.toLowerCase()) ?? false
+      const matchTipo = filtros.tipoDeEgreso ? tipo === filtros.tipoDeEgreso : true
+      const matchRenglon = filtros.renglonDeEgreso ? renglon === filtros.renglonDeEgreso : true
+      const matchPago = filtros.tipoDePago ? pago === filtros.tipoDePago : true
+      const matchEstado = filtros.estado ? String(eg.Estado) === filtros.estado : true
+
+      return matchTexto && matchTipo && matchRenglon && matchPago && matchEstado
+    })
+    setEgresosFiltrados(resultado)
+  }
+
+  const [errores, setErrores] = useState({
+    TipoDeEgreso: "",
+    RenglonDeEgreso: "",
+    TipoDePagoxDefecto: "",
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const dataToSend = {
@@ -73,6 +107,18 @@ export default function GestionDeEgresos() {
       TipoDePagoxDefecto: formData.TipoDePagoxDefecto ? parseInt(formData.TipoDePagoxDefecto) : null,
       Descripcion: formData.Descripcion,
       Estado: formData.Estado,
+    }
+
+    const nuevosErrores = {
+      TipoDeEgreso: !formData.TipoDeEgreso ? "Selecciona un tipo de egreso." : "",
+      RenglonDeEgreso: !formData.RenglonDeEgreso ? "Selecciona un renglón de egreso." : "",
+      TipoDePagoxDefecto: !formData.TipoDePagoxDefecto ? "Selecciona un tipo de pago." : "",
+    };
+
+    setErrores(nuevosErrores);
+
+    if (nuevosErrores.TipoDeEgreso || nuevosErrores.RenglonDeEgreso || nuevosErrores.TipoDePagoxDefecto) {
+      return;
     }
 
     if (editingEgreso) {
@@ -85,6 +131,7 @@ export default function GestionDeEgresos() {
     setEditingEgreso(null)
     setIsDialogOpen(false)
     fetchData()
+    handleFiltrar({ texto: "", tipoDeEgreso: "", renglonDeEgreso: "", tipoDePago: "", estado: "" })
   }
 
   const handleEdit = (egreso: Egreso) => {
@@ -113,7 +160,7 @@ export default function GestionDeEgresos() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditingEgreso(null); setFormData({ TipoDeEgreso: "", RenglonDeEgreso: "", TipoDePagoxDefecto: "", Descripcion: "", Estado: true }) }}>
+            <Button className="bg-[#385bf0] hover:bg-[#132b95]" onClick={() => { setEditingEgreso(null); setFormData({ TipoDeEgreso: "", RenglonDeEgreso: "", TipoDePagoxDefecto: "", Descripcion: "", Estado: true }) }}>
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Egreso
             </Button>
@@ -142,6 +189,9 @@ export default function GestionDeEgresos() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errores.TipoDeEgreso && (
+                    <p className="text-red-600 text-sm mt-1">{errores.TipoDeEgreso}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -161,6 +211,9 @@ export default function GestionDeEgresos() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errores.RenglonDeEgreso && (
+                    <p className="text-red-600 text-sm mt-1">{errores.RenglonDeEgreso}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -180,6 +233,9 @@ export default function GestionDeEgresos() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errores.TipoDePagoxDefecto && (
+                    <p className="text-red-600 text-sm mt-1">{errores.TipoDePagoxDefecto}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -211,10 +267,17 @@ export default function GestionDeEgresos() {
         </Dialog>
       </div>
 
+      <GestionDeEgresosFiltro
+        onFiltrar={handleFiltrar}
+        tiposDeEgreso={tiposDeEgreso}
+        renglonesDeEgreso={renglones}
+        tiposDePago={tiposDePago}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Lista de Egresos</CardTitle>
-          <CardDescription>{egresos.length} egresos registrados</CardDescription>
+          <CardDescription>{egresosFiltrados.length} egresos registrados</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -230,7 +293,7 @@ export default function GestionDeEgresos() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {egresos.map((eg) => (
+              {egresosFiltrados.map((eg) => (
                 <TableRow key={eg.id}>
                   <TableCell>{eg.id}</TableCell>
                   <TableCell>{tiposDeEgreso.find((t) => t.id === eg.TipoDeEgreso)?.Descripcion || "-"}</TableCell>

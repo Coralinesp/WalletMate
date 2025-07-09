@@ -1,93 +1,123 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit, Trash2 } from "lucide-react"
-
-import {
-  getRenglonesDeEgresos,
-  createRenglonDeEgreso,
-  updateRenglonDeEgreso,
-  deleteRenglonDeEgreso
-} from "../back/supabasefunctions"
+import { useEffect, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader, DialogTitle,DialogTrigger,} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Edit, Trash2 } from "lucide-react";
+import {getRenglonesDeEgresos,createRenglonDeEgreso,updateRenglonDeEgreso,deleteRenglonDeEgreso} from "../back/supabasefunctions";
+import RenglonesDeEgresosFiltro, { FiltrosRenglones } from "@/components/ui/Filtros/RenglonesDeEgresosFiltro";
 
 interface RenglonEgreso {
-  id: number
-  Descripcion: string
-  Estado: boolean
+  id: number;
+  Descripcion: string;
+  Estado: boolean;
 }
 
 export default function RenglonesDeEgresos() {
-  const [renglones, setRenglones] = useState<RenglonEgreso[]>([])
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingRenglon, setEditingRenglon] = useState<RenglonEgreso | null>(null)
-  const [formData, setFormData] = useState({ Descripcion: "", Estado: true })
+  const [renglones, setRenglones] = useState<RenglonEgreso[]>([]);
+  const [filtrados, setFiltrados] = useState<RenglonEgreso[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingRenglon, setEditingRenglon] = useState<RenglonEgreso | null>(null);
+  const [formData, setFormData] = useState({ Descripcion: "", Estado: true });
+  const [resetSignal, setResetSignal] = useState(0);
+  const [descripcionError, setDescripcionError] = useState("");
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await getRenglonesDeEgresos()
-        setRenglones(data)
+        const data = await getRenglonesDeEgresos();
+        setRenglones(data);
+        setFiltrados(data);
       } catch (error) {
-        console.error("Error al obtener los renglones:", error)
+        console.error("Error al obtener los renglones:", error);
       }
     }
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
+
+  const handleFiltrar = useCallback((filtros: FiltrosRenglones) => {
+    const resultado = renglones.filter((r) => {
+      const matchTexto = r.Descripcion.toLowerCase().includes(filtros.texto.toLowerCase());
+      const matchEstado = filtros.estado ? String(r.Estado) === filtros.estado : true;
+      return matchTexto && matchEstado;
+    });
+    setFiltrados(resultado);
+  }, [renglones]);
+
+  function validarDescripcion(desc: string): string {
+    const texto = desc.trim();
+    if (/\d/.test(texto)) return "La descripción no debe contener números.";
+    if (texto.length === 0) return "La descripción no puede estar vacía.";
+    if (texto.length === 1) return "La descripción debe tener más de una letra.";
+    return "";
+  }
+
+  const handleDescripcionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, Descripcion: value }));
+    setDescripcionError(validarDescripcion(value));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
+    const error = validarDescripcion(formData.Descripcion);
+    if (error) {
+      setDescripcionError(error);
+      return;
+    }
+    setDescripcionError("");
+
+    // tu lógica para guardar (crear o actualizar)
     try {
       if (editingRenglon) {
         const actualizado = await updateRenglonDeEgreso(editingRenglon.id, {
           descripcion: formData.Descripcion,
           estado: formData.Estado,
-        })
-        setRenglones((prev) =>
-          prev.map((r) => (r.id === actualizado.id ? actualizado : r))
-        )
+        });
+        const nuevaLista = renglones.map((r) =>
+          r.id === actualizado.id ? actualizado : r
+        );
+        setRenglones(nuevaLista);
+        setFiltrados(nuevaLista);
       } else {
         const nuevo = await createRenglonDeEgreso({
           descripcion: formData.Descripcion,
           estado: formData.Estado,
-        })
-        setRenglones((prev) => [...prev, nuevo])
+        });
+        const nuevaLista = [...renglones, nuevo];
+        setRenglones(nuevaLista);
+        setFiltrados(nuevaLista);
       }
-      setIsDialogOpen(false)
-      setEditingRenglon(null)
-      setFormData({ Descripcion: "", Estado: true })
+      setIsDialogOpen(false);
+      setEditingRenglon(null);
+      setFormData({ Descripcion: "", Estado: true });
+      setResetSignal((prev) => prev + 1);
     } catch (error: any) {
-      console.error("Error al guardar el renglón:", error?.message || error)
+      console.error("Error al guardar el renglón:", error?.message || error);
     }
-  }
+  };
 
   const handleEdit = (r: RenglonEgreso) => {
-    setEditingRenglon(r)
-    setFormData({ Descripcion: r.Descripcion, Estado: r.Estado })
-    setIsDialogOpen(true)
-  }
+    setEditingRenglon(r);
+    setFormData({ Descripcion: r.Descripcion, Estado: r.Estado });
+    setIsDialogOpen(true);
+  };
 
   const handleDelete = async (id: number) => {
     try {
-      await deleteRenglonDeEgreso(id)
-      setRenglones((prev) => prev.filter((r) => r.id !== id))
+      await deleteRenglonDeEgreso(id);
+      const nuevaLista = renglones.filter((r) => r.id !== id);
+      setRenglones(nuevaLista);
+      setFiltrados(nuevaLista);
     } catch (error) {
-      console.error("Error al eliminar el renglón:", error)
+      console.error("Error al eliminar el renglón:", error);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -98,70 +128,119 @@ export default function RenglonesDeEgresos() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button
+            <Button className="bg-[#385bf0] hover:bg-[#132b95]"
               onClick={() => {
-                setEditingRenglon(null)
-                setFormData({ Descripcion: "", Estado: true })
+                setEditingRenglon(null);
+                setFormData({ Descripcion: "", Estado: true });
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Renglón
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingRenglon ? "Editar Renglón" : "Nuevo Renglón"}</DialogTitle>
-              <DialogDescription>
-                {editingRenglon
-                  ? "Modifica los datos del renglón"
-                  : "Crea un nuevo renglón de egreso"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="descripcion">Descripción</Label>
-                  <Textarea
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+            {/* Header con fondo degradado */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 text-white">
+              <DialogHeader className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Edit className="w-5 h-5" />
+                    </div>
+                    <DialogTitle className="text-xl font-semibold">
+                      {editingRenglon ? "Editar Renglón" : "Nuevo Renglón"}
+                    </DialogTitle>
+                  </div>
+                </div>
+                <DialogDescription className="text-blue-100">
+                  {editingRenglon
+                    ? "Modifica los datos del renglón"
+                    : "Crea un nuevo renglón de egreso"}
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="descripcion" className="text-sm font-medium text-gray-700">
+                  Descripción del renglón
+                </Label>
+                 <Textarea
                     id="descripcion"
+                    placeholder="Ej: Pago de servicios, gastos operativos..."
                     value={formData.Descripcion}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, Descripcion: e.target.value }))
-                    }
-                    placeholder="Describe el renglón de egreso..."
+                    onChange={handleDescripcionChange} // <-- aquí el cambio importante
+                    className="min-h-[100px] resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="estado">Estado</Label>
-                  <select
-                    id="estado"
-                    value={formData.Estado ? "activo" : "inactivo"}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        Estado: e.target.value === "activo" ? true : false,
-                      }))
-                    }
-                    className="border rounded px-2 py-1"
-                  >
-                    <option value="activo">Activo</option>
-                    <option value="inactivo">Inactivo</option>
-                  </select>
-                </div>
+                  {descripcionError && (
+                    <p className="text-sm text-red-600">{descripcionError}</p> // mensaje de error
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Proporciona una descripción clara del renglón de egreso
+                  </p>
               </div>
-              <DialogFooter>
-                <Button type="submit">{editingRenglon ? "Actualizar" : "Crear"}</Button>
-              </DialogFooter>
+
+              <div className="space-y-2">
+                <Label htmlFor="estado" className="text-sm font-medium text-gray-700">
+                  Estado
+                </Label>
+                <Select
+                  value={formData.Estado ? "true" : "false"}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, Estado: value === "true" }))
+                  }
+                >
+                  <SelectTrigger className="focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Activo</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="false">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <span>Inactivo</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+               {/* Botones */}
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  className="px-6"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="px-6 bg-blue-600 hover:bg-blue-700"
+                  disabled={!formData.Descripcion.trim() || !!descripcionError} // <-- aquí se deshabilita si hay error
+                >
+                  {editingRenglon ? "Actualizar" : "Crear"}
+                </Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* Filtro */}
+      <RenglonesDeEgresosFiltro onFiltrar={handleFiltrar} resetSignal={resetSignal} />
+
       <Card>
         <CardHeader>
           <CardTitle>Lista de Renglones</CardTitle>
-          <CardDescription>{renglones.length} renglones registrados</CardDescription>
+          <CardDescription>{filtrados.length} renglones registrados</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -174,7 +253,7 @@ export default function RenglonesDeEgresos() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {renglones.map((r) => (
+              {filtrados.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.id}</TableCell>
                   <TableCell>{r.Descripcion}</TableCell>
@@ -204,5 +283,5 @@ export default function RenglonesDeEgresos() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
