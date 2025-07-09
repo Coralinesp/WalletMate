@@ -32,9 +32,18 @@ export default function TiposPago() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTipo, setEditingTipo] = useState<TipoDePago | null>(null)
   const [formData, setFormData] = useState({ Descripcion: "", Estado: true })
+  const [resetSignal, setResetSignal] = useState(0)
+
+  // Obtiene el id del usuario logueado
+  const id_user = typeof window !== "undefined" ? Number(localStorage.getItem("user_id")) : null
 
   const fetchTiposPago = async () => {
-    const { data, error } = await supabase.from("TiposDePago").select("*").order("id", { ascending: true })
+    if (!id_user) return
+    const { data, error } = await supabase
+      .from("TiposDePago")
+      .select("*")
+      .eq("id_user", id_user)
+      .order("id", { ascending: true })
     if (!error && data) {
       setTiposPago(data as TipoDePago[])
       setFiltrados(data as TipoDePago[])
@@ -43,7 +52,8 @@ export default function TiposPago() {
 
   useEffect(() => {
     fetchTiposPago()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id_user])
 
   const handleFiltrar = (filtros: { texto: string; estado: string }) => {
     const resultado = tiposPago.filter((tipo) => {
@@ -56,24 +66,25 @@ export default function TiposPago() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!id_user) return
 
     if (editingTipo) {
       const { error } = await supabase
         .from("TiposDePago")
         .update({ Descripcion: formData.Descripcion, Estado: formData.Estado })
         .eq("id", editingTipo.id)
-
       if (!error) await fetchTiposPago()
     } else {
       const { error } = await supabase
         .from("TiposDePago")
-        .insert([{ Descripcion: formData.Descripcion, Estado: formData.Estado }])
+        .insert([{ Descripcion: formData.Descripcion, Estado: formData.Estado, id_user }])
       if (!error) await fetchTiposPago()
     }
 
     setIsDialogOpen(false)
     setEditingTipo(null)
     setFormData({ Descripcion: "", Estado: true })
+    setResetSignal((prev) => prev + 1)
     handleFiltrar({ texto: "", estado: "" })
   }
 
@@ -176,7 +187,7 @@ export default function TiposPago() {
                         tipo.Estado ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {tipo.Estado ? "Activo" : "Inactivo"}
+                      {tipo.Estado ? "Activo" : "Inactivo"} 
                     </span>
                   </TableCell>
                   <TableCell className="text-right">

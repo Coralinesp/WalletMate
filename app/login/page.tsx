@@ -42,12 +42,17 @@ export default function LoginPage() {
     }
 
     if (data && data.length === 1) {
+      // DEPURACIÓN: muestra el valor real de Estado
+      console.log("Valor de Estado:", data[0].Estado)
+      // Solo permite si Estado es true (booleano)
+      if (data[0].Estado !== true) {
+        setError("Usuario desactivado.")
+        return
+      }
       localStorage.setItem("isLoggedIn", "true")
       localStorage.setItem("usuario", nombre)
-
-      // 🔥 Notifica al sidebar que hubo login
+      localStorage.setItem("user_id", data[0].id);
       window.dispatchEvent(new Event("loginStatusChanged"))
-
       router.push("/tipos-ingresos")
     } else {
       setError("Nombre o contraseña incorrectos.")

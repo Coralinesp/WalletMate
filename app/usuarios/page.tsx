@@ -30,6 +30,7 @@ interface Usuario {
   LimiteDeEgresos: number | null;
   FechaDeCorte: string | null;
   Estado: boolean | null;
+  admin?: number | null; // <-- Añade el campo admin
 }
 
 export default function Usuarios() {
@@ -45,6 +46,7 @@ export default function Usuarios() {
     LimiteDeEgresos: "",
     FechaDeCorte: "",
     Estado: "true",
+    admin: "1", // Por defecto Usuario
   });
 
   const fetchUsuarios = async () => {
@@ -74,6 +76,7 @@ export default function Usuarios() {
       LimiteDeEgresos: formData.LimiteDeEgresos ? Number(formData.LimiteDeEgresos) : null,
       FechaDeCorte: formData.FechaDeCorte,
       Estado: formData.Estado === "true",
+      admin: Number(formData.admin), // <-- Guardar admin como número
     };
 
     if (editingUsuario) {
@@ -88,6 +91,7 @@ export default function Usuarios() {
       LimiteDeEgresos: "",
       FechaDeCorte: "",
       Estado: "true",
+      admin: "1",
     });
     setIsDialogOpen(false);
     setEditingUsuario(null);
@@ -103,12 +107,20 @@ export default function Usuarios() {
       LimiteDeEgresos: usuario.LimiteDeEgresos?.toString() || "",
       FechaDeCorte: usuario.FechaDeCorte || "",
       Estado: usuario.Estado?.toString() || "true",
+      admin: usuario.admin?.toString() || "1",
     });
     setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: number) => {
-    await supabase.from("Usuarios").delete().eq("id", id);
+    if (window.confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
+      await supabase.from("Usuarios").delete().eq("id", id);
+      await fetchUsuarios(); // Espera a que termine antes de refrescar
+    }
+  };
+
+  const handleAdminChange = async (id: number, newAdmin: number) => {
+    await supabase.from("Usuarios").update({ admin: newAdmin }).eq("id", id);
     fetchUsuarios();
   };
 
@@ -130,6 +142,7 @@ export default function Usuarios() {
                   LimiteDeEgresos: "",
                   FechaDeCorte: "",
                   Estado: "true",
+                  admin: "1",
                 });
               }}
             >
@@ -161,6 +174,20 @@ export default function Usuarios() {
                 <div className="grid gap-2">
                   <Label>Fecha de Corte</Label>
                   <Input type="date" value={formData.FechaDeCorte} onChange={(e) => setFormData({ ...formData, FechaDeCorte: e.target.value })} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Rol</Label>
+                  <Select value={formData.admin} onValueChange={(value) => setFormData({ ...formData, admin: value })}>
+                    <SelectTrigger>
+                      <SelectValue>
+                        {formData.admin === "2" ? "Admin" : "Usuario"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Usuario</SelectItem>
+                      <SelectItem value="2">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label>Estado</Label>
@@ -222,6 +249,7 @@ export default function Usuarios() {
                 <TableHead>Cédula</TableHead>
                 <TableHead>Límite</TableHead>
                 <TableHead>Fecha Corte</TableHead>
+                <TableHead>Admin</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -234,6 +262,9 @@ export default function Usuarios() {
                   <TableCell>{usuario.Cedula}</TableCell>
                   <TableCell>{usuario.LimiteDeEgresos}</TableCell>
                   <TableCell>{usuario.FechaDeCorte}</TableCell>
+                  <TableCell>
+                    {usuario.admin === 2 ? "Admin" : "Usuario"}
+                  </TableCell>
                   <TableCell>
                     <Badge className={usuario.Estado ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                       {usuario.Estado ? "Activo" : "Inactivo"}
@@ -255,4 +286,6 @@ export default function Usuarios() {
           </Table>
         </CardContent>
       </Card>
-    </div>)}
+    </div>
+  );
+}
