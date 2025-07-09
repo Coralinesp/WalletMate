@@ -93,6 +93,12 @@ export default function GestionDeEgresos() {
     setEgresosFiltrados(resultado)
   }
 
+  const [errores, setErrores] = useState({
+    TipoDeEgreso: "",
+    RenglonDeEgreso: "",
+    TipoDePagoxDefecto: "",
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const dataToSend = {
@@ -101,6 +107,18 @@ export default function GestionDeEgresos() {
       TipoDePagoxDefecto: formData.TipoDePagoxDefecto ? parseInt(formData.TipoDePagoxDefecto) : null,
       Descripcion: formData.Descripcion,
       Estado: formData.Estado,
+    }
+
+    const nuevosErrores = {
+      TipoDeEgreso: !formData.TipoDeEgreso ? "Selecciona un tipo de egreso." : "",
+      RenglonDeEgreso: !formData.RenglonDeEgreso ? "Selecciona un renglón de egreso." : "",
+      TipoDePagoxDefecto: !formData.TipoDePagoxDefecto ? "Selecciona un tipo de pago." : "",
+    };
+
+    setErrores(nuevosErrores);
+
+    if (nuevosErrores.TipoDeEgreso || nuevosErrores.RenglonDeEgreso || nuevosErrores.TipoDePagoxDefecto) {
+      return;
     }
 
     if (editingEgreso) {
@@ -171,6 +189,9 @@ export default function GestionDeEgresos() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errores.TipoDeEgreso && (
+                    <p className="text-red-600 text-sm mt-1">{errores.TipoDeEgreso}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -190,6 +211,9 @@ export default function GestionDeEgresos() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errores.RenglonDeEgreso && (
+                    <p className="text-red-600 text-sm mt-1">{errores.RenglonDeEgreso}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -209,6 +233,9 @@ export default function GestionDeEgresos() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errores.TipoDePagoxDefecto && (
+                    <p className="text-red-600 text-sm mt-1">{errores.TipoDePagoxDefecto}</p>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
