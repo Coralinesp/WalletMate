@@ -46,7 +46,7 @@ export default function Usuarios() {
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [cedulaError, setCedulaError] = useState("");
-  const [errors, setErrors] = useState<FormErrors>({});   
+  const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -67,33 +67,44 @@ export default function Usuarios() {
   };
 
   async function deleteUsuarioConDatos(id: number) {
-  try {
-    // Paso 1: Eliminar todos los tipos de pago creados por este usuario
-    await supabase.from("TiposDePago").delete().eq("id_user", id);
+    try {
+      // Paso 1: Eliminar Gestión de Egresos relacionados con TiposDeEgresos del usuario
+      const { data: tiposEgresos } = await supabase.from("TiposDeEgresos").select("id").eq("id_user", id);
+      const tiposEgresosIds = tiposEgresos?.map((t: any) => t.id) || [];
+      if (tiposEgresosIds.length > 0) {
+        await supabase.from("GestionDeEgresos").delete().in("TipoDeEgreso", tiposEgresosIds);
+      }
 
-    // Paso 2: Eliminar todos los tipos de ingresos
-    await supabase.from("TiposDeIngresos").delete().eq("id_user", id);
+      // Paso 2: Eliminar TiposDeEgresos del usuario
+      await supabase.from("TiposDeEgresos").delete().eq("id_user", id);
 
-    // Paso 3: Eliminar todos los tipos de egresos
-    await supabase.from("TiposDeEgresos").delete().eq("id_user", id);
+      // Paso 3: Eliminar Gestión de Ingresos relacionados con TiposDeIngresos del usuario
+      const { data: tiposIngresos } = await supabase.from("TiposDeIngresos").select("id").eq("id_user", id);
+      const tiposIngresosIds = tiposIngresos?.map((t: any) => t.id) || [];
+      if (tiposIngresosIds.length > 0) {
+        await supabase.from("GestionDeIngresos").delete().in("TipoDeIngreso", tiposIngresosIds);
+      }
 
-    // Si tienes otras tablas relacionadas, las colocas aquí antes del DELETE del usuario
+      // Paso 4: Eliminar TiposDeIngresos del usuario
+      await supabase.from("TiposDeIngresos").delete().eq("id_user", id);
 
-    // Paso 4: Finalmente, eliminar el usuario
-    const { error } = await supabase.from("Usuarios").delete().eq("id", id);
+      // Paso 5: Eliminar TiposDePago del usuario (si se relacionan en otras tablas, agrégalo igual)
+      await supabase.from("TiposDePago").delete().eq("id_user", id);
 
-    if (error) {
-      alert("Error al eliminar el usuario.");
-      console.error(error);
-    } else {
-      alert("Usuario y todos sus datos relacionados eliminados correctamente.");
+      // Paso 6: Finalmente, eliminar el usuario
+      const { error } = await supabase.from("Usuarios").delete().eq("id", id);
+
+      if (error) {
+        alert("Error al eliminar el usuario.");
+        console.error(error);
+      } else {
+        alert("Usuario y todos sus datos relacionados eliminados correctamente.");
+      }
+    } catch (err) {
+      alert("Error inesperado eliminando el usuario.");
+      console.error(err);
     }
-  } catch (err) {
-    alert("Error inesperado eliminando el usuario.");
-    console.error(err);
   }
-}
-
 
   useEffect(() => {
     fetchUsuarios();
@@ -136,7 +147,7 @@ export default function Usuarios() {
         LimiteDeEgresos: "",
         FechaDeCorte: "",
         Estado: "true",
-      admin: "1",
+        admin: "1",
       });
       setErrors({});
       setIsDialogOpen(false);
@@ -150,14 +161,14 @@ export default function Usuarios() {
     }
   };
   const handleInputChange = (field: keyof typeof formData, value: string) => {
-  setFormData((prev) => ({ ...prev, [field]: value }));
-};
-const handleLimiteChange = (value: string) => {
-  // Opcional: Validar que solo se permitan números y punto decimal
-  if (/^\d*\.?\d*$/.test(value)) {
-    setFormData((prev) => ({ ...prev, LimiteDeEgresos: value }));
-  }
-};
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+  const handleLimiteChange = (value: string) => {
+    // Opcional: Validar que solo se permitan números y punto decimal
+    if (/^\d*\.?\d*$/.test(value)) {
+      setFormData((prev) => ({ ...prev, LimiteDeEgresos: value }));
+    }
+  };
 
   const handleEdit = (usuario: Usuario) => {
     setEditingUsuario(usuario);
@@ -173,10 +184,10 @@ const handleLimiteChange = (value: string) => {
   };
 
   const handleDelete = async (id: number) => {
-  if (!window.confirm("¿Estás seguro de que deseas eliminar este usuario y sus datos relacionados?")) return;
-  await deleteUsuarioConDatos(id);
-  await fetchUsuarios(); // Refresca la tabla
-};
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este usuario y sus datos relacionados?")) return;
+    await deleteUsuarioConDatos(id);
+    await fetchUsuarios(); // Refresca la tabla
+  };
 
 
 
@@ -186,22 +197,22 @@ const handleLimiteChange = (value: string) => {
   };
 
   function validarCedulaDominicana(cedula: string): boolean {
-  cedula = cedula.replace(/-/g, "");
+    cedula = cedula.replace(/-/g, "");
 
-  if (!/^\d{11}$/.test(cedula)) return false;
+    if (!/^\d{11}$/.test(cedula)) return false;
 
-  const coeficientes = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2];
-  let suma = 0;
+    const coeficientes = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2];
+    let suma = 0;
 
-  for (let i = 0; i < 10; i++) {
-    let producto = parseInt(cedula[i]) * coeficientes[i];
-    if (producto > 9) producto -= 9;
-    suma += producto;
+    for (let i = 0; i < 10; i++) {
+      let producto = parseInt(cedula[i]) * coeficientes[i];
+      if (producto > 9) producto -= 9;
+      suma += producto;
+    }
+
+    const verificador = (10 - (suma % 10)) % 10;
+    return verificador === parseInt(cedula[10]);
   }
-
-  const verificador = (10 - (suma % 10)) % 10;
-  return verificador === parseInt(cedula[10]);
-}
   const validateForm = () => {
     const newErrors: FormErrors = {};
     if (!formData.Nombre.trim()) newErrors.Nombre = "El nombre es requerido.";
@@ -225,7 +236,7 @@ const handleLimiteChange = (value: string) => {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
-            className="bg-[#385bf0] hover:bg-[#132b95]"
+              className="bg-[#385bf0] hover:bg-[#132b95]"
               onClick={() => {
                 setEditingUsuario(null);
                 setFormData({
