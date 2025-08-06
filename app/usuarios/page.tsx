@@ -30,13 +30,15 @@ interface Usuario {
   LimiteDeEgresos: number | null;
   FechaDeCorte: string | null;
   Estado: boolean | null;
-  admin?: number | null; // <-- Añade el campo admin
+  Balance: number | null;
+  admin?: number | null;
 }
 interface FormErrors {
   Nombre?: string;
   Cedula?: string;
   LimiteDeEgresos?: string;
   FechaDeCorte?: string;
+  Balance?: string;
 }
 
 export default function Usuarios() {
@@ -54,44 +56,50 @@ export default function Usuarios() {
     Cedula: "",
     LimiteDeEgresos: "",
     FechaDeCorte: "",
+    Balance: "",
     Estado: "true",
-    admin: "1", // Por defecto Usuario
+    admin: "1",
   });
 
   const fetchUsuarios = async () => {
-    const { data, error } = await supabase.from("Usuarios").select("*");
-    if (!error && data) {
-      setUsuarios(data);
-      setFiltrados(data);
+    const { data: users, error } = await supabase.from("Usuarios").select("*");
+    const { data: trans } = await supabase.from("Transacciones").select("*");
+
+    if (!error && users) {
+      const balances: Record<number, number> = {};
+      trans?.forEach((t: any) => {
+        if (!balances[t.user_id]) balances[t.user_id] = 0;
+        balances[t.user_id] +=
+          t.tipo_transaccion === "Ingreso"
+            ? Number(t.monto || 0)
+            : -Number(t.monto || 0);
+      });
+
+      const usersWithBalance = users.map((u: any) => ({
+        ...u,
+        Balance: balances[u.id] ?? 0,
+      }));
+
+      setUsuarios(usersWithBalance);
+      setFiltrados(usersWithBalance);
     }
   };
 
   async function deleteUsuarioConDatos(id: number) {
     try {
-      // Paso 1: Eliminar Gestión de Egresos relacionados con TiposDeEgresos del usuario
       const { data: tiposEgresos } = await supabase.from("TiposDeEgresos").select("id").eq("id_user", id);
       const tiposEgresosIds = tiposEgresos?.map((t: any) => t.id) || [];
       if (tiposEgresosIds.length > 0) {
         await supabase.from("GestionDeEgresos").delete().in("TipoDeEgreso", tiposEgresosIds);
       }
-
-      // Paso 2: Eliminar TiposDeEgresos del usuario
       await supabase.from("TiposDeEgresos").delete().eq("id_user", id);
-
-      // Paso 3: Eliminar Gestión de Ingresos relacionados con TiposDeIngresos del usuario
       const { data: tiposIngresos } = await supabase.from("TiposDeIngresos").select("id").eq("id_user", id);
       const tiposIngresosIds = tiposIngresos?.map((t: any) => t.id) || [];
       if (tiposIngresosIds.length > 0) {
         await supabase.from("GestionDeIngresos").delete().in("TipoDeIngreso", tiposIngresosIds);
       }
-
-      // Paso 4: Eliminar TiposDeIngresos del usuario
       await supabase.from("TiposDeIngresos").delete().eq("id_user", id);
-
-      // Paso 5: Eliminar TiposDePago del usuario (si se relacionan en otras tablas, agrégalo igual)
       await supabase.from("TiposDePago").delete().eq("id_user", id);
-
-      // Paso 6: Finalmente, eliminar el usuario
       const { error } = await supabase.from("Usuarios").delete().eq("id", id);
 
       if (error) {
@@ -117,7 +125,6 @@ export default function Usuarios() {
     setFiltrados(resultado);
   }, [usuarios]);
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -130,8 +137,9 @@ export default function Usuarios() {
       Cedula: formData.Cedula ? Number(formData.Cedula) : null,
       LimiteDeEgresos: formData.LimiteDeEgresos ? Number(formData.LimiteDeEgresos) : null,
       FechaDeCorte: formData.FechaDeCorte,
+      Balance: formData.Balance ? Number(formData.Balance) : null,
       Estado: formData.Estado === "true",
-      admin: Number(formData.admin), // <-- Guardar admin como número
+      admin: Number(formData.admin),
     };
 
     try {
@@ -146,6 +154,7 @@ export default function Usuarios() {
         Cedula: "",
         LimiteDeEgresos: "",
         FechaDeCorte: "",
+        Balance: "",
         Estado: "true",
         admin: "1",
       });
@@ -160,11 +169,12 @@ export default function Usuarios() {
       setIsLoading(false);
     }
   };
+
   const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
   const handleLimiteChange = (value: string) => {
-    // Opcional: Validar que solo se permitan números y punto decimal
     if (/^\d*\.?\d*$/.test(value)) {
       setFormData((prev) => ({ ...prev, LimiteDeEgresos: value }));
     }
@@ -177,6 +187,7 @@ export default function Usuarios() {
       Cedula: usuario.Cedula?.toString() || "",
       LimiteDeEgresos: usuario.LimiteDeEgresos?.toString() || "",
       FechaDeCorte: usuario.FechaDeCorte || "",
+      Balance: usuario.Balance?.toString() || "",
       Estado: usuario.Estado?.toString() || "true",
       admin: usuario.admin?.toString() || "1",
     });
@@ -186,10 +197,8 @@ export default function Usuarios() {
   const handleDelete = async (id: number) => {
     if (!window.confirm("¿Estás seguro de que deseas eliminar este usuario y sus datos relacionados?")) return;
     await deleteUsuarioConDatos(id);
-    await fetchUsuarios(); // Refresca la tabla
+    await fetchUsuarios();
   };
-
-
 
   const handleAdminChange = async (id: number, newAdmin: number) => {
     await supabase.from("Usuarios").update({ admin: newAdmin }).eq("id", id);
@@ -213,18 +222,18 @@ export default function Usuarios() {
     const verificador = (10 - (suma % 10)) % 10;
     return verificador === parseInt(cedula[10]);
   }
+
   const validateForm = () => {
     const newErrors: FormErrors = {};
     if (!formData.Nombre.trim()) newErrors.Nombre = "El nombre es requerido.";
     if (!formData.Cedula.trim()) newErrors.Cedula = "La cédula es requerida.";
-    else if (!validarCedulaDominicana(formData.Cedula)) newErrors.Cedula = "Cédula inválida.";
-    if (!formData.LimiteDeEgresos.trim()) newErrors.LimiteDeEgresos = "Límite de egresos requerido.";
-    else if (isNaN(Number(formData.LimiteDeEgresos))) newErrors.LimiteDeEgresos = "Debe ser un número válido.";
-    if (!formData.FechaDeCorte.trim()) newErrors.FechaDeCorte = "Fecha de corte requerida.";
+    else if (isNaN(Number(formData.Cedula))) newErrors.Cedula = "Debe ser numérica.";
+    if (!formData.LimiteDeEgresos.trim()) newErrors.LimiteDeEgresos = "Límite requerido.";
+    if (!formData.FechaDeCorte.trim()) newErrors.FechaDeCorte = "Fecha requerida.";
+    if (!formData.Balance.trim()) newErrors.Balance = "Balance requerido.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
 
   return (
     <div className="space-y-6">
@@ -244,6 +253,7 @@ export default function Usuarios() {
                   Cedula: "",
                   LimiteDeEgresos: "",
                   FechaDeCorte: "",
+                  Balance: "",
                   Estado: "true",
                   admin: "1",
                 });
@@ -268,7 +278,6 @@ export default function Usuarios() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
-                {/* Nombre */}
                 <div className="space-y-2">
                   <Label htmlFor="nombre" className="text-sm font-medium flex items-center gap-2">
                     <User className="h-4 w-4 text-blue-600" />
@@ -286,7 +295,6 @@ export default function Usuarios() {
                   {errors.Nombre && <p className="text-sm text-blue-700">{errors.Nombre}</p>}
                 </div>
 
-                {/* Cédula */}
                 <div className="space-y-2">
                   <Label htmlFor="cedula" className="text-sm font-medium flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-blue-600" />
@@ -304,7 +312,6 @@ export default function Usuarios() {
                   {errors.Cedula && <p className="text-sm text-blue-700">{errors.Cedula}</p>}
                 </div>
 
-                {/* Límite de Egresos */}
                 <div className="space-y-2">
                   <Label htmlFor="limite" className="text-sm font-medium flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-blue-600" />
@@ -325,7 +332,6 @@ export default function Usuarios() {
                   {errors.LimiteDeEgresos && <p className="text-sm text-blue-700">{errors.LimiteDeEgresos}</p>}
                 </div>
 
-                {/* Fecha de Corte */}
                 <div className="space-y-2">
                   <Label htmlFor="fechaCorte" className="text-sm font-medium">
                     Fecha de Corte
@@ -428,6 +434,7 @@ export default function Usuarios() {
                 <TableHead>Límite</TableHead>
                 <TableHead>Fecha Corte</TableHead>
                 <TableHead>Admin</TableHead>
+                <TableHead>Balance</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -442,6 +449,11 @@ export default function Usuarios() {
                   <TableCell>{usuario.FechaDeCorte}</TableCell>
                   <TableCell>
                     {usuario.admin === 2 ? "Admin" : "Usuario"}
+                  </TableCell>
+                  <TableCell>
+                    <span className={usuario.Balance && usuario.Balance < 0 ? "text-red-600" : "text-green-600"}>
+                      {usuario.Balance}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <Badge className={usuario.Estado ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>

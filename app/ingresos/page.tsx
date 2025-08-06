@@ -25,6 +25,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit, Check, Trash2 } from "lucide-react"
 import GestionDeIngresosFiltro from "../../components/ui/Filtros/GestionDeIngresosFiltro"
+import ReportButton from '@/components/ui/reportButton'
 
 interface GestionIngreso {
   id: number
@@ -326,6 +327,8 @@ export default function GestionDeIngresos() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <ReportButton data={filtrados} fileName="reporte_ingresos.xlsx" />
 
       <GestionDeIngresosFiltro
         onFiltrar={handleFiltrar}

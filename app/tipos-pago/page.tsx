@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Plus, Edit, Trash2, CreditCard, Check } from "lucide-react"
 import TiposDePagoFiltro from "../../components/ui/Filtros/TiposDePagoFiltro"
+import ReportButton from "@/components/ui/reportButton"
 
 interface TipoDePago {
   id: number
@@ -219,6 +220,8 @@ export default function TiposPago() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <ReportButton data={filtrados} fileName="reporte_transacciones.xlsx" />
 
       <TiposDePagoFiltro onFiltrar={handleFiltrar} />
 
