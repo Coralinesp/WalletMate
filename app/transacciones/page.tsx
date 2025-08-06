@@ -1,218 +1,257 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Search, Filter, Download } from "lucide-react"
+import { useEffect, useState } from "react";
+import supabase from "../back/supabase";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Edit, Trash2 } from "lucide-react";
 
 interface Transaccion {
-  id: number
-  fecha: string
-  tipo: "Ingreso" | "Egreso"
-  descripcion: string
-  monto: number
-  usuario: string
-  tipoTransaccion: string
-  clasificacion?: string
-  tipoPago: string
+  id: number;
+  user_id: number | null;
+  tipo_transaccion: "Ingreso" | "Egreso";
+  monto: number | null;
+  fecha: string | null;
+  descripcion: string | null;
+}
+
+interface Usuario {
+  id: number;
+  Nombre: string;
 }
 
 export default function Transacciones() {
-  const [transacciones] = useState<Transaccion[]>([
-    {
-      id: 1,
-      fecha: "2024-01-15",
-      tipo: "Ingreso",
-      descripcion: "Salario Base Unapec",
-      monto: 2500.0,
-      usuario: "Juan Pérez",
-      tipoTransaccion: "Salario Base",
-      tipoPago: "Transferencia",
-    },
-    {
-      id: 2,
-      fecha: "2024-01-14",
-      tipo: "Egreso",
-      descripcion: "Compra Supermercado Nacional",
-      monto: 125.5,
-      usuario: "Juan Pérez",
-      tipoTransaccion: "Gasto",
-      clasificacion: "Comida",
-      tipoPago: "Tarjeta de Débito",
-    },
-    {
-      id: 3,
-      fecha: "2024-01-13",
-      tipo: "Egreso",
-      descripcion: "Recarga Combustible Shell",
-      monto: 45.0,
-      usuario: "Juan Pérez",
-      tipoTransaccion: "Gasto",
-      clasificacion: "Combustible",
-      tipoPago: "Efectivo",
-    },
-    {
-      id: 4,
-      fecha: "2024-01-12",
-      tipo: "Ingreso",
-      descripcion: "Comisión Consultora AXP",
-      monto: 300.0,
-      usuario: "Juan Pérez",
-      tipoTransaccion: "Comisiones",
-      tipoPago: "Transferencia",
-    },
-    {
-      id: 5,
-      fecha: "2024-01-11",
-      tipo: "Egreso",
-      descripcion: "Cena Restaurante Vesuvio",
-      monto: 85.75,
-      usuario: "María García",
-      tipoTransaccion: "Gasto",
-      clasificacion: "Recreación",
-      tipoPago: "Tarjeta de Crédito",
-    },
-  ])
+  const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Transaccion | null>(null);
+  const [formData, setFormData] = useState({
+    user_id: "",
+    tipo_transaccion: "Ingreso",
+    monto: "",
+    fecha: "",
+    descripcion: "",
+  });
 
-  const [filtros, setFiltros] = useState({
-    busqueda: "",
-    tipo: "Todos los tipos",
-    usuario: "",
-    fechaInicio: "",
-    fechaFin: "",
-  })
+  const fetchData = async () => {
+    const { data: trans } = await supabase.from("Transacciones").select("*");
+    const { data: users } = await supabase.from("Usuarios").select("id, Nombre");
+    if (trans) setTransacciones(trans);
+    if (users) setUsuarios(users);
+  };
 
-  const transaccionesFiltradas = transacciones.filter((transaccion) => {
-    return (
-      transaccion.descripcion.toLowerCase().includes(filtros.busqueda.toLowerCase()) &&
-      (filtros.tipo === "Todos los tipos" || transaccion.tipo === filtros.tipo) &&
-      (filtros.usuario === "" || transaccion.usuario.includes(filtros.usuario))
-    )
-  })
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const totalIngresos = transaccionesFiltradas.filter((t) => t.tipo === "Ingreso").reduce((sum, t) => sum + t.monto, 0)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const totalEgresos = transaccionesFiltradas.filter((t) => t.tipo === "Egreso").reduce((sum, t) => sum + t.monto, 0)
+    if (
+      !formData.user_id ||
+      !formData.monto ||
+      !formData.fecha ||
+      !formData.descripcion
+    ) {
+      alert("Todos los campos son obligatorios.");
+      return;
+    }
+
+    const dataToSend = {
+      user_id: Number(formData.user_id),
+      tipo_transaccion: formData.tipo_transaccion,
+      monto: formData.monto ? Number(formData.monto) : null,
+      fecha: formData.fecha,
+      descripcion: formData.descripcion,
+    };
+
+    if (editing) {
+      await supabase
+        .from("Transacciones")
+        .update(dataToSend)
+        .eq("id", editing.id);
+    } else {
+      await supabase.from("Transacciones").insert(dataToSend);
+    }
+    setFormData({
+      user_id: "",
+      tipo_transaccion: "Ingreso",
+      monto: "",
+      fecha: "",
+      descripcion: "",
+    });
+    setEditing(null);
+    setIsDialogOpen(false);
+    fetchData();
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm("¿Eliminar transacción?")) {
+      await supabase.from("Transacciones").delete().eq("id", id);
+      fetchData();
+    }
+  };
+
+  const handleEdit = (t: Transaccion) => {
+    setEditing(t);
+    setFormData({
+      user_id: t.user_id?.toString() || "",
+      tipo_transaccion: t.tipo_transaccion,
+      monto: t.monto?.toString() || "",
+      fecha: t.fecha || "",
+      descripcion: t.descripcion || "",
+    });
+    setIsDialogOpen(true);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Transacciones</h1>
-          <p className="text-muted-foreground">Consulta y filtra todas las transacciones del sistema</p>
+          <p className="text-muted-foreground">
+            Gestiona todas las transacciones del sistema
+          </p>
         </div>
-        <Button>
-          <Download className="mr-2 h-4 w-4" />
-          Exportar
-        </Button>
-      </div>
-
-      {/* Resumen */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Ingresos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">${totalIngresos.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Egresos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">${totalEgresos.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div
-              className={`text-2xl font-bold ${totalIngresos - totalEgresos >= 0 ? "text-green-600" : "text-red-600"}`}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setFormData({
+                  user_id: "",
+                  tipo_transaccion: "Ingreso",
+                  monto: "",
+                  fecha: "",
+                  descripcion: "",
+                });
+              }}
             >
-              ${(totalIngresos - totalEgresos).toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtros de Búsqueda
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            <div className="space-y-2">
-              <Label htmlFor="busqueda">Buscar</Label>
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Plus className="mr-2 h-4 w-4" /> Nueva Transacción
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editing ? "Editar" : "Nueva"} Transacción
+              </DialogTitle>
+              <DialogDescription>
+                Completa toda la información de la transacción
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label>Usuario</Label>
+                <Select
+                  value={formData.user_id}
+                  onValueChange={(v) => setFormData({ ...formData, user_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona usuario" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usuarios.map((u) => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {u.Nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Tipo de Transacción</Label>
+                <Select
+                  value={formData.tipo_transaccion}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, tipo_transaccion: v as any })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Ingreso">Ingreso</SelectItem>
+                    <SelectItem value="Egreso">Egreso</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Monto</Label>
                 <Input
-                  id="busqueda"
-                  placeholder="Buscar transacciones..."
-                  className="pl-8"
-                  value={filtros.busqueda}
-                  onChange={(e) => setFiltros((prev) => ({ ...prev, busqueda: e.target.value }))}
+                  type="number"
+                  value={formData.monto}
+                  onChange={(e) =>
+                    setFormData({ ...formData, monto: e.target.value })
+                  }
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select value={filtros.tipo} onValueChange={(value) => setFiltros((prev) => ({ ...prev, tipo: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos los tipos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Todos los tipos">Todos los tipos</SelectItem>
-                  <SelectItem value="Ingreso">Ingreso</SelectItem>
-                  <SelectItem value="Egreso">Egreso</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Usuario</Label>
-              <Input
-                placeholder="Filtrar por usuario"
-                value={filtros.usuario}
-                onChange={(e) => setFiltros((prev) => ({ ...prev, usuario: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Fecha Inicio</Label>
-              <Input
-                type="date"
-                value={filtros.fechaInicio}
-                onChange={(e) => setFiltros((prev) => ({ ...prev, fechaInicio: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Fecha Fin</Label>
-              <Input
-                type="date"
-                value={filtros.fechaFin}
-                onChange={(e) => setFiltros((prev) => ({ ...prev, fechaFin: e.target.value }))}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              <div>
+                <Label>Fecha</Label>
+                <Input
+                  type="date"
+                  value={formData.fecha}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fecha: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Descripción</Label>
+                <Input
+                  value={formData.descripcion}
+                  onChange={(e) =>
+                    setFormData({ ...formData, descripcion: e.target.value })
+                  }
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit">
+                  {editing ? "Actualizar" : "Crear"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-      {/* Tabla de Transacciones */}
       <Card>
         <CardHeader>
           <CardTitle>Lista de Transacciones</CardTitle>
-          <CardDescription>{transaccionesFiltradas.length} transacciones encontradas</CardDescription>
+          <CardDescription>{transacciones.length} registradas</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -220,36 +259,55 @@ export default function Transacciones() {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Fecha</TableHead>
+                <TableHead>Usuario</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Descripción</TableHead>
-                <TableHead>Usuario</TableHead>
-                <TableHead>Clasificación</TableHead>
-                <TableHead>Tipo Pago</TableHead>
-                <TableHead className="text-right">Monto</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transaccionesFiltradas.map((transaccion) => (
-                <TableRow key={transaccion.id}>
-                  <TableCell className="font-medium">{transaccion.id}</TableCell>
-                  <TableCell>{transaccion.fecha}</TableCell>
+              {transacciones.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell>{t.id}</TableCell>
+                  <TableCell>{t.fecha}</TableCell>
                   <TableCell>
-                    <Badge variant={transaccion.tipo === "Ingreso" ? "default" : "destructive"}>
-                      {transaccion.tipo}
+                    {usuarios.find((u) => u.id === t.user_id)?.Nombre}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        t.tipo_transaccion === "Ingreso" ? "default" : "destructive"
+                      }
+                    >
+                      {t.tipo_transaccion}
                     </Badge>
                   </TableCell>
-                  <TableCell>{transaccion.descripcion}</TableCell>
-                  <TableCell>{transaccion.usuario}</TableCell>
-                  <TableCell>
-                    {transaccion.clasificacion && <Badge variant="outline">{transaccion.clasificacion}</Badge>}
-                  </TableCell>
-                  <TableCell>{transaccion.tipoPago}</TableCell>
+                  <TableCell>{t.descripcion}</TableCell>
                   <TableCell
-                    className={`text-right font-medium ${
-                      transaccion.tipo === "Ingreso" ? "text-green-600" : "text-red-600"
-                    }`}
+                    className={
+                      t.tipo_transaccion === "Ingreso"
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }
                   >
-                    {transaccion.tipo === "Ingreso" ? "+" : "-"}${transaccion.monto.toLocaleString()}
+                    ${t.monto?.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(t)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(t.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -258,5 +316,5 @@ export default function Transacciones() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

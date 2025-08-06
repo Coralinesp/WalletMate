@@ -14,6 +14,7 @@ import {
   CreditCard,
   Users,
   LogOut,
+  ArrowLeftRight,
 } from "lucide-react"
 
 const navigation = [
@@ -24,6 +25,7 @@ const navigation = [
   { name: "Tipos de Pago", href: "/tipos-pago", icon: CreditCard },
   { name: "Ingresos", href: "/ingresos", icon: TrendingUp },
   { name: "Egresos", href: "/egresos", icon: TrendingDown },
+  { name: "Transacciones", href: "/transacciones", icon: ArrowLeftRight },
   { name: "Usuarios", href: "/usuarios", icon: Users },
 ]
 
