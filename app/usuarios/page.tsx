@@ -19,9 +19,8 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, User, CreditCard, DollarSign } from "lucide-react";
+import { Plus, Edit, Trash2, User, CreditCard, DollarSign, SlidersHorizontal  } from "lucide-react";
 
-import UsuariosFiltro, { FiltrosUsuarios } from "@/components/ui/Filtros/UsuariosFiltro";
 
 interface Usuario {
   id: number;
@@ -40,6 +39,10 @@ interface FormErrors {
   FechaDeCorte?: string;
   Balance?: string;
 }
+interface FiltrosUsuarios {
+  estado?: string;
+  searchTerm?: string;
+}
 
 export default function Usuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -50,6 +53,9 @@ export default function Usuarios() {
   const [cedulaError, setCedulaError] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState("todos");
+
 
   const [formData, setFormData] = useState({
     Nombre: "",
@@ -118,12 +124,14 @@ export default function Usuarios() {
     fetchUsuarios();
   }, []);
 
-  const handleFiltrar = useCallback((filtros: FiltrosUsuarios) => {
-    const resultado = usuarios.filter((u) =>
-      filtros.estado ? String(u.Estado) === filtros.estado : true
-    );
-    setFiltrados(resultado);
-  }, [usuarios]);
+  const handleFiltrar = (filtros: FiltrosUsuarios) => {
+    if (filtros.searchTerm !== undefined) {
+      setSearchTerm(filtros.searchTerm);
+    }
+    if (filtros.estado !== undefined) {
+      setEstadoFiltro(filtros.estado);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,6 +242,19 @@ export default function Usuarios() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const usuariosFiltrados = usuarios.filter((usuario) => {
+    const cedulaStr = usuario.Cedula ? usuario.Cedula.toString() : "";
+
+    const matchesSearch =
+      usuario.Nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cedulaStr.includes(searchTerm);
+
+    const matchesEstado =
+      estadoFiltro === "todos" || String(usuario.Estado) === estadoFiltro;
+
+    return matchesSearch && matchesEstado;
+  });
 
   return (
     <div className="space-y-6">
@@ -394,7 +415,6 @@ export default function Usuarios() {
         </Dialog>
       </div>
 
-      <UsuariosFiltro onFiltrar={handleFiltrar} resetSignal={resetSignal} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
@@ -402,9 +422,9 @@ export default function Usuarios() {
             <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
             <User className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{filtrados.length}</div>
-          </CardContent>
+        <CardContent>
+          <div className="text-2xl font-bold">{usuariosFiltrados.length}</div>
+        </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -413,7 +433,7 @@ export default function Usuarios() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {filtrados.filter((u) => u.Estado === true).length}
+              {usuariosFiltrados.filter((u) => u.Estado === true).length}
             </div>
           </CardContent>
         </Card>
@@ -422,7 +442,34 @@ export default function Usuarios() {
       <Card>
         <CardHeader>
           <CardTitle>Lista de Usuarios</CardTitle>
-          <CardDescription>{filtrados.length} usuarios registrados en el sistema</CardDescription>
+          <CardDescription>{usuariosFiltrados.length} usuarios registrados en el sistema</CardDescription>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-4">
+          {/* Barra de búsqueda */}
+          <div className="flex-1">
+            <Input
+              placeholder="Buscar usuario por nombre o cédula..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+        {/* Filtro de estado */}
+        <div className="flex items-center gap-2">
+          <Select value={estadoFiltro} onValueChange={(value) => setEstadoFiltro(value)}>    
+            <SelectTrigger className="w-[150px]">
+              <SlidersHorizontal   className="h-5 w-5 text-muted-foreground" />
+              <SelectValue placeholder="Filtrar estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="true">Activos</SelectItem>
+              <SelectItem value="false">Inactivos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+</div>
+
         </CardHeader>
         <CardContent>
           <Table>
@@ -440,7 +487,7 @@ export default function Usuarios() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtrados.map((usuario) => (
+             {usuariosFiltrados.map((usuario) => (
                 <TableRow key={usuario.id}>
                   <TableCell>{usuario.id}</TableCell>
                   <TableCell>{usuario.Nombre}</TableCell>

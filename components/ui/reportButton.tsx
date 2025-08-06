@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { utils, writeFile } from 'xlsx';
+import { FileText } from 'lucide-react';
 
 
 interface ReportButtonProps<T> {
@@ -27,10 +28,11 @@ const ReportButton = <T extends object>({
   return (
     <>
       <button
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-800"
+        className="flex gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-800"
         onClick={() => setIsOpen(true)}
       >
         Crear reporte
+        <FileText />
       </button>
 
         {isOpen &&

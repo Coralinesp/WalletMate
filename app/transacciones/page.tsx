@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import supabase from "../back/supabase";
 
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -150,7 +151,8 @@ export default function Transacciones() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button
+            <Button 
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-800"
               onClick={() => {
                 setEditing(null);
                 setFormData({
@@ -214,11 +216,13 @@ export default function Transacciones() {
                 <Label>Monto</Label>
                 <Input
                   type="number"
+                  min="1"
                   value={formData.monto}
-                  onChange={(e) =>
-                    setFormData({ ...formData, monto: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, monto: e.target.value })}
                 />
+                {formData.monto !== "" && parseFloat(formData.monto) <= 0 && (
+                  <p style={{ color: "red" }}>El monto debe ser mayor que 0</p>
+                )}
               </div>
               <div>
                 <Label>Fecha</Label>
@@ -279,8 +283,10 @@ export default function Transacciones() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={
-                        t.tipo_transaccion === "Ingreso" ? "default" : "destructive"
+                      className={
+                        t.tipo_transaccion === "Ingreso"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
                       }
                     >
                       {t.tipo_transaccion}
