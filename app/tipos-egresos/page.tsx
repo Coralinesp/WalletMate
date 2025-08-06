@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Trash2, ArrowDownFromLine  } from "lucide-react";
 import {getTiposDeEgresos,createTipoDeEgreso,updateTipoDeEgreso,deleteTipoDeEgreso,} from "../back/supabasefunctions";
 import TiposDeEgresosFiltro, { FiltrosTiposEgresos } from "@/components/ui/Filtros/TiposDeEgresosFiltro";
+import ReportButton from "@/components/ui/reportButton";
 
 interface TipoEgreso {
   id: number;
@@ -242,6 +243,8 @@ export default function TiposEgresos() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <ReportButton data={filtrados} fileName="reporte_transacciones.xlsx" />
 
       <TiposDeEgresosFiltro onFiltrar={handleFiltrar} resetSignal={resetSignal} />
 

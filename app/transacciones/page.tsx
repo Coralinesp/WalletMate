@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2 } from "lucide-react";
+import ReportButton from "@/components/ui/reportButton";
 
 interface Transaccion {
   id: number;
@@ -247,6 +248,8 @@ export default function Transacciones() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <ReportButton data={transacciones} fileName="reporte_transacciones.xlsx" />
 
       <Card>
         <CardHeader>
