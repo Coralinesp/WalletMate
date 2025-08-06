@@ -27,14 +27,13 @@ const ReportButton = <T extends object>({
 
   return (
     <>
-      <button
-        className="flex gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-800"
+        <button
+        className="flex gap-2 bg-white text-gray-900 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-100 hover:text-gray-700"
         onClick={() => setIsOpen(true)}
       >
         Crear reporte
-        <FileText />
+        <FileText className='w-5'/>
       </button>
-
         {isOpen &&
         createPortal(
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
