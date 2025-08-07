@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { getTiposDeIngresos, createTipoDeIngreso, updateTipoDeIngreso, deleteTipoDeIngreso,} from "../back/supabasefunctions";
 import TiposDeIngresosFiltro, { FiltrosTiposIngresos } from "@/components/ui/Filtros/TiposDeIngresosFiltro";
+import ReportButton from "@/components/ui/reportButton";
 
 interface TipoIngreso {
   id: number;
@@ -231,6 +232,8 @@ export default function TiposIngresos() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <ReportButton data={filtrados} fileName="reporte_transacciones.xlsx" />
 
       <TiposDeIngresosFiltro onFiltrar={handleFiltrar} resetSignal={resetSignal} />
 

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import {getRenglonesDeEgresos,createRenglonDeEgreso,updateRenglonDeEgreso,deleteRenglonDeEgreso} from "../back/supabasefunctions";
 import RenglonesDeEgresosFiltro, { FiltrosRenglones } from "@/components/ui/Filtros/RenglonesDeEgresosFiltro";
+import ReportButton from "@/components/ui/reportButton";
 
 interface RenglonEgreso {
   id: number;
@@ -233,6 +234,8 @@ export default function RenglonesDeEgresos() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <ReportButton data={filtrados} fileName="reporte_transacciones.xlsx" />
 
       {/* Filtro */}
       <RenglonesDeEgresosFiltro onFiltrar={handleFiltrar} resetSignal={resetSignal} />

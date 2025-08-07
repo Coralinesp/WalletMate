@@ -19,6 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Edit, Trash2 } from "lucide-react"
 import GestionDeEgresosFiltro from "../../components/ui/Filtros/GestionDeEgresosFiltro"
+import ReportButton from '@/components/ui/reportButton'
 
 interface Egreso {
   id: number
@@ -266,6 +267,8 @@ export default function GestionDeEgresos() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <ReportButton data={egresosFiltrados} fileName="reporte_egresos.xlsx" />
 
       <GestionDeEgresosFiltro
         onFiltrar={handleFiltrar}
