@@ -1,7 +1,6 @@
 # WalletMate 👛  
 ## Overview ✏️  
-This is the project for the course **Desarrollo de Software con Tecnología Open Source 2 (ISO-715)** at **Universidad APEC**.  
-Throughout the semester, we collaboratively developed **WalletMate**, a modern web application for personal finance management.
+This is the project for the course **Desarrollo de Software con Tecnología Open Source 2 (ISO-715)** at **Universidad APEC**. Throughout the semester, we collaboratively developed **WalletMate**, a modern web application for personal finance management.
 
 WalletMate helps users take control of their finances by allowing them to track incomes, expenses, categories, and payment methods, all through a clean and intuitive interface. It also features dynamic filtering and role-based access for better usability and security.
 
